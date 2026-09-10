@@ -10,7 +10,7 @@ output_path = "../result/result1.xlsx"
 
 df = pd.read_excel(input_path)
 
-# 根据截图，前四列分别为：
+# 根据附件，前四列分别为：
 # 时间、电价（元/kWh）、小区负载（kW）、光伏发电预测功率（kW）
 df = df.iloc[:, :4]
 df.columns = ["时间", "电价", "小区负载", "光伏发电预测功率"]
@@ -121,17 +121,8 @@ print("0:00 储电量 = %.2f kWh" % S_val[0])
 print("24:00 储电量 = %.2f kWh" % S_val[T])
 
 # ============================================================
-# 6. 生成输出表：截图2格式
+# 6. 生成输出表：
 # ============================================================
-# 截图2中“时间段”格式为：
-# 0:10-0:20
-# 0:20-0:30
-# ...
-# 注意：截图2第一行数据从 0:10-0:20 开始，
-# 但模型第一个时段是 0:00-0:10。
-# 这里严格按照模型时段生成完整 144 行，格式为：
-# 0:00-0:10, 0:10-0:20, ...
-# 若需要与截图2完全一致，可自行删除第一行或调整。
 
 def format_time(minutes):
     h = minutes // 60
@@ -140,8 +131,8 @@ def format_time(minutes):
 
 time_labels = []
 for t in range(T):
-    start = t * 10
-    end = (t + 1) * 10
+    start = (t + 1) * 10
+    end = (t + 2) * 10
     time_labels.append(f"{format_time(start)}-{format_time(end)}")
 
 result_df = pd.DataFrame({
