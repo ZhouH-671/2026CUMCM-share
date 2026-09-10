@@ -1,0 +1,78 @@
+"E:\My\2026CUMCM-share\Problem C\Problem 1st\Problem 1st\.venv\Scripts\python.exe" "E:\My\2026CUMCM-share\Problem C\Problem 1st\Problem 1st\problem.py" 
+读取到 144 个时段
+Welcome to the CBC MILP Solver 
+Version: 2.10.3 
+Build Date: Dec 15 2019 
+
+command line - E:\My\2026CUMCM-share\Problem C\Problem 1st\Problem 1st\.venv\Lib\site-packages\pulp\apis\../solverdir/cbc/win/i64/cbc.exe C:\Users\Lenovo\AppData\Local\Temp\b3777341aad14ecd91e04f41e8257fde-pulp.mps -timeMode elapsed -solve -printingOptions all -solution C:\Users\Lenovo\AppData\Local\Temp\b3777341aad14ecd91e04f41e8257fde-pulp.sol (default strategy 1)
+At line 2 NAME          MODEL
+At line 3 ROWS
+At line 583 COLUMNS
+At line 2602 RHS
+At line 3181 BOUNDS
+At line 3616 ENDATA
+Problem MODEL has 578 rows, 721 columns and 1586 elements
+Coin0008I MODEL read with 0 errors
+Option for timeMode changed from cpu to elapsed
+Continuous objective value is 35126.9 - 0.01 seconds
+Cgl0004I processed model has 447 rows, 590 columns (114 integer (114 of which binary)) and 1264 elements
+Cbc0038I Initial state - 3 integers unsatisfied sum - 0.934965
+Cbc0038I Pass   1: suminf.    0.00000 (0) obj. 35369.9 iterations 19
+Cbc0038I Solution found of 35369.9
+Cbc0038I Relaxing continuous gives 35361.6
+Cbc0038I Before mini branch and bound, 111 integers at bound fixed and 257 continuous
+Cbc0038I Full problem 447 rows 590 columns, reduced to 3 rows 18 columns
+Cbc0038I Mini branch and bound improved solution from 35361.6 to 35126.9 (0.03 seconds)
+Cbc0038I After 0.03 seconds - Feasibility pump exiting with objective of 35126.9 - took 0.01 seconds
+Cbc0012I Integer solution of 35126.949 found by feasibility pump after 0 iterations and 0 nodes (0.03 seconds)
+Cbc0001I Search completed - best objective 35126.94858928811, took 0 iterations and 0 nodes (0.03 seconds)
+Cbc0035I Maximum depth 0, 0 variables fixed on reduced cost
+Cuts at root node changed objective from 35126.9 to 35126.9
+Probing was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+Gomory was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+Knapsack was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+Clique was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+MixedIntegerRounding2 was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+FlowCover was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+TwoMirCuts was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+ZeroHalf was tried 0 times and created 0 cuts of which 0 were active after adding rounds of cuts (0.000 seconds)
+
+Result - Optimal solution found
+
+Objective value:                35126.94858929
+Enumerated nodes:               0
+Total iterations:               0
+Time (CPU seconds):             0.04
+Time (Wallclock seconds):       0.04
+
+Option for printingOptions changed from normal to all
+Total time (CPU seconds):       0.14   (Wallclock seconds):       0.14
+
+求解状态： Optimal
+全天购电费 = 35126.95 元
+全天购电量 = 59482.70 kWh
+全天购电费 = 35126.95 元
+0:00 储电量 = 6000.00 kWh
+24:00 储电量 = 6000.00 kWh
+结果已保存到：../result/result1.xlsx
+          时间段         购电量    储能设备充电量  储能设备放电量
+0   0:00-0:10  1406.64110  833.33333      0.0
+1   0:10-0:20  1406.32990  833.33333      0.0
+2   0:20-0:30  1407.38390  833.33333      0.0
+3   0:30-0:40  1409.07400  833.33333      0.0
+4   0:40-0:50  1409.80460  833.33333      0.0
+5   0:50-1:00   576.64002    0.00000      0.0
+6   1:00-1:10   577.85970    0.00000      0.0
+7   1:10-1:20   577.99387    0.00000      0.0
+8   1:20-1:30   911.16138  333.33333      0.0
+9   1:30-1:40   580.41545    0.00000      0.0
+10  1:40-1:50   582.51402    0.00000      0.0
+11  1:50-2:00   583.07405    0.00000      0.0
+12  2:00-2:10   584.20492    0.00000      0.0
+13  2:10-2:20   585.43978    0.00000      0.0
+14  2:20-2:30   586.14475    0.00000      0.0
+15  2:30-2:40   586.32077    0.00000      0.0
+16  2:40-2:50   586.42530    0.00000      0.0
+17  2:50-3:00   586.84960    0.00000      0.0
+18  3:00-3:10   587.82102    0.00000      0.0
+19  3:10-3:20   589.54757    0.00000      0.0
