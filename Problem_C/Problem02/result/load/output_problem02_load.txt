@@ -1,0 +1,9 @@
+D:\Python\python.exe E:\My\2026CUMCM-share\Problem_C\Problem02\src\comparison_load.py 
+1月选参得分： {0.1: 125.4076, 1.0: 124.8626, 10.0: 124.3449, 100.0: 123.7476}
+1月选定岭参数：100.0
+2月起原方法 MAE：176.8301 kW
+2月起 load4 新方法 MAE：173.3338 kW
+5天预测CSV：E:\My\2026CUMCM-share\Problem_C\Problem02\result\forecast_load_5days.csv
+对比图：E:\My\2026CUMCM-share\Problem_C\Problem02\result\comparison_load.svg
+
+进程已结束，退出代码为 0
