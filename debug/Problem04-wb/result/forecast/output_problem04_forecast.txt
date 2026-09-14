@@ -1,0 +1,17 @@
+D:\Python\python.exe E:\My\2026CUMCM-share\Problem_C\Problem04-wb\src\forecast.py 
+数据目录：E:\My\2026CUMCM-share\Problem_C\Problem04-wb\data
+附件4：365 天 x 144 时段，日均价 0.7662 元/kWh
+附件1 基准形状：均值 0.7662 元/kWh
+评估区间：2025-02-01 ~ 2025-12-31（334 天）
+  [done] rolling      MAE 0.0939  RMSE 0.1207  R^2(逐时段) 0.8709  R^2(日均值) 0.2317（0 秒）
+  [done] sarima       MAE 0.0666  RMSE 0.0854  R^2(逐时段) 0.9354  R^2(日均值) 0.9509（42 秒）
+  [done] holtwinters  MAE 0.0656  RMSE 0.0840  R^2(逐时段) 0.9376  R^2(日均值) 0.9754（8 秒）
+==========================================================================
+滚动均值 (K=7)                               R²(逐时段)=0.8709  R²(日均值)=0.2317  MAE=0.0939
+SARIMA(1, 0, 1, 1, 0, 1, 7)              R²(逐时段)=0.9354  R²(日均值)=0.9509  MAE=0.0666
+Holt-Winters (m=7)                       R²(逐时段)=0.9376  R²(日均值)=0.9754  MAE=0.0656
+预测电价 Excel：pred_price_rolling.xlsx、pred_price_sarima.xlsx、pred_price_holtwinters.xlsx
+指标表：E:\My\2026CUMCM-share\Problem_C\Problem04-wb\result\forecast\price_forecast_metrics.csv
+图：fig_sample_day_compare.svg / fig_daily_mean_compare.svg / fig_r2_compare.svg
+
+进程已结束，退出代码为 0

@@ -1,0 +1,8 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem02\evaluate\pv.py 
+1月选择：lambda=1.0，原方法融合权重=0.4，验证MAE=213.0155 kW
+2月起原方法 MAE：366.7740 kW
+2月起 pv4 新方法 MAE：364.8649 kW
+5天预测CSV：E:\My\2026CUMCM-share\release\result\problem02\evaluate\pv\pv_forecast_5days.csv
+对比图：E:\My\2026CUMCM-share\release\result\problem02\evaluate\pv\pv4_14-00_comparison.svg
+
+进程已结束，退出代码为 0

@@ -1,0 +1,34 @@
+E:\My\2026CUMCM-share\Problem_C\Problem04\.venv\Scripts\python.exe E:\My\2026CUMCM-share\Problem_C\Problem04\src\comparison.py 
+[读取] 打开电价文件：E:\My\2026CUMCM-share\Problem_C\Problem04\data\appendix04.xlsx
+[读取] 共 365 天，2025-01-01 至 2025-12-31
+[读取] 电价统计：min=0.007600  max=1.793600  mean=0.766198  std=0.340670
+[分解] 日均电价：min=0.537805  max=0.928992  mean=0.766198
+[预测] 目标日期：2025-02-01 至 2025-12-31，共 334 天
+[预测] 进度 30/334，当前目标日 2025-03-02
+[预测] 进度 60/334，当前目标日 2025-04-01
+[预测] 进度 90/334，当前目标日 2025-05-01
+[预测] 进度 120/334，当前目标日 2025-05-31
+[预测] 进度 150/334，当前目标日 2025-06-30
+[预测] 进度 180/334，当前目标日 2025-07-30
+[预测] 进度 210/334，当前目标日 2025-08-29
+[预测] 进度 240/334，当前目标日 2025-09-28
+[预测] 进度 270/334，当前目标日 2025-10-28
+[预测] 进度 300/334，当前目标日 2025-11-27
+[预测] 进度 330/334，当前目标日 2025-12-27
+[预测] 进度 334/334，当前目标日 2025-12-31
+[写出] E:\My\2026CUMCM-share\Problem_C\Problem04\result\comparison\prediction_SARIMA.xlsx（334 天）
+[写出] E:\My\2026CUMCM-share\Problem_C\Problem04\result\comparison\prediction_HoltWinters.xlsx（334 天）
+[写出] E:\My\2026CUMCM-share\Problem_C\Problem04\result\comparison\prediction_Regression.xlsx（334 天）
+[写出] E:\My\2026CUMCM-share\Problem_C\Problem04\result\comparison\evaluation.xlsx
+
+========================================================================
+误差对比（按 RMSE 升序）
+========================================================================
+方法                       MAE        RMSE        MAPE        R2      天数
+Ridge 回归            0.044425    0.057255    0.076592  0.967267     334
+Holt-Winters        0.044160    0.057350    0.075215  0.967233     334
+SARIMA              0.044752    0.058051    0.075816  0.965755     334
+
+最优方案：Ridge 回归（RMSE=0.057255，MAE=0.044425，MAPE=0.076592，R2=0.967267）
+
+进程已结束，退出代码为 0

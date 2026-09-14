@@ -1,0 +1,14 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem04\problem4_3.py
+求解日期：2025-02-01 至 2025-12-31
+计划购电量：20504920.290839 kWh
+调整后购电量：21163348.910480 kWh
+计划购电费：12488172.223002 元
+调整费用：772236.364609 元
+紧急购电量：47824.919727 kWh
+紧急购电费：275737.660157 元
+总费用：13536146.247768 元
+期末储电量：5788.255214 kWh
+总耗时：103.620 秒
+结果已保存：E:\My\2026CUMCM-share\release\result\problem04\result4-3.xlsx
+
+进程已结束，退出代码为 0

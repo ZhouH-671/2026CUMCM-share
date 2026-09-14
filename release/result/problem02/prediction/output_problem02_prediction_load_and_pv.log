@@ -1,0 +1,8 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem02\prediction\prediction_load_and_pv.py
+负载参数：lambda=100.0，得分={0.1: 125.40755122558159, 1.0: 124.86257124923965, 10.0: 124.34490723172215, 100.0: 123.74760116259}
+光伏参数：lambda=1.0，原方法融合权重=0.4
+预测范围：2025-02-01 至 2025-12-31
+输出行数：334 天，时间列：144 个
+表格已保存：E:\My\2026CUMCM-share\release\result\problem02\prediction\prediction.xlsx
+
+进程已结束，退出代码为 0

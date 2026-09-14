@@ -1,0 +1,11 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe "D:/PyCharm/PyCharm 2024.1.4/plugins/python/helpers/pycharm/_jb_unittest_runner.py" --path E:\My\2026CUMCM-share\release\test\test_problem01.py
+Testing started at 上午11:50 ...
+Launching unittests with arguments python -m unittest E:\My\2026CUMCM-share\release\test\test_problem01.py in E:\My\2026CUMCM-share\release\test
+
+
+
+Ran 7 tests in 0.134s
+
+OK
+
+进程已结束，退出代码为 0

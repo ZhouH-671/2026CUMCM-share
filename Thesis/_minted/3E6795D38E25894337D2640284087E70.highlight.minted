@@ -1,0 +1,416 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{\PYGZus{}\PYGZus{}future\PYGZus{}\PYGZus{}}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{annotations}
+
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{argparse}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{dataclasses}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{asdict}\PYG{p}{,} \PYG{n}{dataclass}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{datetime}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{datetime}\PYG{p}{,} \PYG{n}{time}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{json}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{pathlib}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Path}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{time}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{perf\PYGZus{}counter}
+
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{openpyxl}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{scipy}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy}\PYG{n+nn}{.}\PYG{n+nn}{optimize}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Bounds}\PYG{p}{,} \PYG{n}{LinearConstraint}\PYG{p}{,} \PYG{n}{milp}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy}\PYG{n+nn}{.}\PYG{n+nn}{sparse}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{lil\PYGZus{}matrix}
+
+        \PYG{n}{ROOT} \PYG{o}{=} \PYG{n}{Path}\PYG{p}{(}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}file\PYGZus{}\PYGZus{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{resolve}\PYG{p}{(}\PYG{p}{)}\PYG{o}{.}\PYG{n}{parents}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}
+        \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{problem01}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{n+nd}{@dataclass}\PYG{p}{(}\PYG{n}{frozen}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{Battery}\PYG{p}{:}
+        \PYG{n}{dt}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{l+m+mi}{6}  \PYG{c+c1}{\PYGZsh{} 小时}
+        \PYG{n}{eta\PYGZus{}c}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+        \PYG{n}{eta\PYGZus{}d}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+        \PYG{n}{minimum}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{1200.0}  \PYG{c+c1}{\PYGZsh{} kWh，电池内部口径}
+        \PYG{n}{maximum}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{10800.0}
+        \PYG{n}{initial}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{6000.0}
+        \PYG{n}{charge\PYGZus{}kw}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{5000.0}  \PYG{c+c1}{\PYGZsh{} 电池外部口径}
+        \PYG{n}{discharge\PYGZus{}kw}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{5000.0}
+
+
+        \PYG{n+nd}{@dataclass}\PYG{p}{(}\PYG{n}{frozen}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{Inputs}\PYG{p}{:}
+        \PYG{n}{price}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}  \PYG{c+c1}{\PYGZsh{} 元/kWh}
+        \PYG{n}{load\PYGZus{}kw}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{pv\PYGZus{}kw}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+
+        \PYG{n+nd}{@property}
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{periods}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{int}\PYG{p}{:}
+        \PYG{k}{return} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{price}\PYG{p}{)}
+
+
+        \PYG{n+nd}{@dataclass}
+        \PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{Model}\PYG{p}{:}
+        \PYG{n}{objective}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{integrality}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{bounds}\PYG{p}{:} \PYG{n}{Bounds}
+        \PYG{n}{constraints}\PYG{p}{:} \PYG{n}{LinearConstraint}
+        \PYG{n}{blocks}\PYG{p}{:} \PYG{n+nb}{dict}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{,} \PYG{n+nb}{slice}\PYG{p}{]}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{time\PYGZus{}minutes}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{int}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}兼容附件混用的 Excel 时间、字符串和 0:00+1。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{n+nb}{isinstance}\PYG{p}{(}\PYG{n}{value}\PYG{p}{,} \PYG{n}{datetime}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{value} \PYG{o}{=} \PYG{n}{value}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{isinstance}\PYG{p}{(}\PYG{n}{value}\PYG{p}{,} \PYG{n}{time}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{if} \PYG{n}{value}\PYG{o}{.}\PYG{n}{second} \PYG{o+ow}{or} \PYG{n}{value}\PYG{o}{.}\PYG{n}{microsecond}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间包含非零秒：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{value}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{value}\PYG{o}{.}\PYG{n}{hour} \PYG{o}{*} \PYG{l+m+mi}{60} \PYG{o}{+} \PYG{n}{value}\PYG{o}{.}\PYG{n}{minute}
+        \PYG{k}{if} \PYG{n+nb}{isinstance}\PYG{p}{(}\PYG{n}{value}\PYG{p}{,} \PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{,} \PYG{n+nb}{int}\PYG{p}{)}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{minutes} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{1440}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{)} \PYG{o+ow}{or} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{minutes} \PYG{o}{\PYGZhy{}} \PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{)}\PYG{p}{)} \PYG{o}{\PYGZgt{}} \PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{无法识别 Excel 时间：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{value}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{)}
+        \PYG{n}{text} \PYG{o}{=} \PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)}\PYG{o}{.}\PYG{n}{strip}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{next\PYGZus{}day} \PYG{o}{=} \PYG{n}{text}\PYG{o}{.}\PYG{n}{endswith}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{+1}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{next\PYGZus{}day}\PYG{p}{:}
+        \PYG{n}{text} \PYG{o}{=} \PYG{n}{text}\PYG{p}{[}\PYG{p}{:}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{2}\PYG{p}{]}
+        \PYG{n}{parts} \PYG{o}{=} \PYG{n}{text}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{:}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{parts}\PYG{p}{)} \PYG{o+ow}{not} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{)} \PYG{o+ow}{or} \PYG{p}{(}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{parts}\PYG{p}{)} \PYG{o}{==} \PYG{l+m+mi}{3} \PYG{o+ow}{and} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{parts}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{无法识别时间：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{value}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{hour}\PYG{p}{,} \PYG{n}{minute} \PYG{o}{=} \PYG{n+nb}{map}\PYG{p}{(}\PYG{n+nb}{int}\PYG{p}{,} \PYG{n}{parts}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{l+m+mi}{0} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{minute} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{60} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{l+m+mi}{0} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{hour} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{l+m+mi}{24} \PYG{o+ow}{or} \PYG{p}{(}\PYG{n}{hour} \PYG{o}{==} \PYG{l+m+mi}{24} \PYG{o+ow}{and} \PYG{n}{minute}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间超出范围：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{value}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{hour} \PYG{o}{*} \PYG{l+m+mi}{60} \PYG{o}{+} \PYG{n}{minute} \PYG{o}{+} \PYG{l+m+mi}{1440} \PYG{o}{*} \PYG{n}{next\PYGZus{}day}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{load\PYGZus{}inputs}\PYG{p}{(}\PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{Inputs}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}只读附件 1，并核验 144 条记录的时间顺序；不静默排序或填补缺失值。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{load\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{path}\PYG{p}{,} \PYG{n}{read\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{data\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{n}{rows} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{workbook}\PYG{o}{.}\PYG{n}{active}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{values\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}\PYG{p}{)}
+        \PYG{k}{finally}\PYG{p}{:}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{close}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{expected} \PYG{o}{=} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{电价}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电预测功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{tuple}\PYG{p}{(}\PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{4}\PYG{p}{]}\PYG{p}{)} \PYG{o}{!=} \PYG{n}{expected}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 1 表头不匹配，应为：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{expected}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{records} \PYG{o}{=} \PYG{p}{[}\PYG{n}{row} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n+nb}{any}\PYG{p}{(}\PYG{n}{v} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None} \PYG{k}{for} \PYG{n}{v} \PYG{o+ow}{in} \PYG{n}{row}\PYG{p}{)}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{records}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{144}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{需要 144 条数据，实际为 }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{records}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 条}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{labels} \PYG{o}{=} \PYG{p}{[}\PYG{n}{time\PYGZus{}minutes}\PYG{p}{(}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{records}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{labels} \PYG{o}{!=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{1441}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{)}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间必须按 00:10、00:20、…、24:00 排列}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{values} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{p}{[}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{l+m+mi}{4}\PYG{p}{]} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{records}\PYG{p}{]}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件存在缺失或非有限数值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{p}{(}\PYG{n}{values} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{o}{.}\PYG{n}{any}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{第一问输入的电价、负载和光伏功率应非负}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{Inputs}\PYG{p}{(}\PYG{n}{values}\PYG{p}{[}\PYG{p}{:}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{,} \PYG{n}{values}\PYG{p}{[}\PYG{p}{:}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{,} \PYG{n}{values}\PYG{p}{[}\PYG{p}{:}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{]}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{build\PYGZus{}model}\PYG{p}{(}\PYG{n}{data}\PYG{p}{:} \PYG{n}{Inputs}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{:} \PYG{n}{Battery} \PYG{o}{=} \PYG{n}{Battery}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{Model}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}变量顺序：[g(144), c(144), d(144), S(145), z(144)]。}
+
+\PYG{l+s+sd}{        状态 S 含日初；其他变量按时段排列。所有充放电变量单位为 kWh。}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{t\PYGZus{}count} \PYG{o}{=} \PYG{n}{data}\PYG{o}{.}\PYG{n}{periods}
+        \PYG{k}{for} \PYG{n}{values} \PYG{o+ow}{in} \PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{price}\PYG{p}{,} \PYG{n}{data}\PYG{o}{.}\PYG{n}{load\PYGZus{}kw}\PYG{p}{,} \PYG{n}{data}\PYG{o}{.}\PYG{n}{pv\PYGZus{}kw}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{if} \PYG{n}{np}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)} \PYG{o}{!=} \PYG{p}{(}\PYG{n}{t\PYGZus{}count}\PYG{p}{,}\PYG{p}{)} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{输入向量必须等长且为有限数值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{np}\PYG{o}{.}\PYG{n}{any}\PYG{p}{(}\PYG{n}{values} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{第一问输入应非负}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{t\PYGZus{}count} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{1}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{至少需要一个时段}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n+nb}{all}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{v}\PYG{p}{)} \PYG{k}{for} \PYG{n}{v} \PYG{o+ow}{in} \PYG{n}{asdict}\PYG{p}{(}\PYG{n}{battery}\PYG{p}{)}\PYG{o}{.}\PYG{n}{values}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{电池参数必须为有限数值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{p}{(}\PYG{l+m+mi}{0} \PYG{o}{\PYGZlt{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}c} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o+ow}{and} \PYG{l+m+mi}{0} \PYG{o}{\PYGZlt{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}d} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{效率应在 (0, 1] 内}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{p}{(}\PYG{l+m+mi}{0} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{minimum} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{initial} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{初始储电量必须处于运行范围内}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{l+m+mi}{0} \PYG{o+ow}{or} \PYG{n+nb}{min}\PYG{p}{(}\PYG{n}{battery}\PYG{o}{.}\PYG{n}{charge\PYGZus{}kw}\PYG{p}{,} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{discharge\PYGZus{}kw}\PYG{p}{)} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时段长度须为正，充放电功率上限须非负}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{n} \PYG{o}{=} \PYG{n}{t\PYGZus{}count}
+        \PYG{n}{blocks} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{5} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{size} \PYG{o}{=} \PYG{l+m+mi}{5} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}
+        \PYG{n}{objective} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{)}
+        \PYG{n}{objective}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{data}\PYG{o}{.}\PYG{n}{price}  \PYG{c+c1}{\PYGZsh{} min sum(p\PYGZus{}t * g\PYGZus{}t)}
+        \PYG{n}{integrality} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{int}\PYG{p}{)}
+        \PYG{n}{integrality}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+        \PYG{n}{lower} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{)}
+        \PYG{n}{upper} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{full}\PYG{p}{(}\PYG{n}{size}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{inf}\PYG{p}{)}
+        \PYG{n}{c\PYGZus{}max} \PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{charge\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}
+        \PYG{n}{d\PYGZus{}max} \PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{discharge\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{c\PYGZus{}max}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{d\PYGZus{}max}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{minimum}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{maximum}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}
+        \PYG{c+c1}{\PYGZsh{} S\PYGZus{}0 = S\PYGZus{}T = 6000，通过相等的上下界固定。}
+        \PYG{k}{for} \PYG{n}{position} \PYG{o+ow}{in} \PYG{p}{(}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start}\PYG{p}{,} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{stop} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{position}\PYG{p}{]} \PYG{o}{=} \PYG{n}{upper}\PYG{p}{[}\PYG{n}{position}\PYG{p}{]} \PYG{o}{=} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{initial}
+
+        \PYG{n}{matrix} \PYG{o}{=} \PYG{n}{lil\PYGZus{}matrix}\PYG{p}{(}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{n}{size}\PYG{p}{)}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}
+        \PYG{n}{row\PYGZus{}lower} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{full}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{inf}\PYG{p}{)}
+        \PYG{n}{row\PYGZus{}upper} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}
+        \PYG{n}{demand} \PYG{o}{=} \PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{load\PYGZus{}kw} \PYG{o}{\PYGZhy{}} \PYG{n}{data}\PYG{o}{.}\PYG{n}{pv\PYGZus{}kw}\PYG{p}{)} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{n}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{g}\PYG{p}{,} \PYG{n}{c}\PYG{p}{,} \PYG{n}{d}\PYG{p}{,} \PYG{n}{s}\PYG{p}{,} \PYG{n}{z} \PYG{o}{=} \PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{n}{key}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t} \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{]}
+        \PYG{c+c1}{\PYGZsh{} g\PYGZus{}t \PYGZhy{} c\PYGZus{}t + d\PYGZus{}t = (L\PYGZus{}t \PYGZhy{} PV\PYGZus{}t) * dt；光伏全部消纳。}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{g}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}
+        \PYG{n}{row\PYGZus{}lower}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{demand}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}
+        \PYG{c+c1}{\PYGZsh{} S\PYGZus{}\PYGZob{}t+1\PYGZcb{} \PYGZhy{} S\PYGZus{}t \PYGZhy{} eta\PYGZus{}c*c\PYGZus{}t + d\PYGZus{}t/eta\PYGZus{}d = 0。}
+        \PYG{n}{row} \PYG{o}{=} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{s} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{s}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}c}\PYG{p}{,} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}d}
+        \PYG{n}{row\PYGZus{}lower}\PYG{p}{[}\PYG{n}{row}\PYG{p}{]} \PYG{o}{=} \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{n}{row}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{0}
+        \PYG{c+c1}{\PYGZsh{} c\PYGZus{}t \PYGZlt{}= C\PYGZus{}max*z\PYGZus{}t；d\PYGZus{}t \PYGZlt{}= D\PYGZus{}max*(1\PYGZhy{}z\PYGZus{}t)。}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{z}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{n}{c\PYGZus{}max}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{z}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{d\PYGZus{}max}
+        \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{d\PYGZus{}max}
+
+        \PYG{k}{return} \PYG{n}{Model}\PYG{p}{(}\PYG{n}{objective}\PYG{p}{,} \PYG{n}{integrality}\PYG{p}{,} \PYG{n}{Bounds}\PYG{p}{(}\PYG{n}{lower}\PYG{p}{,} \PYG{n}{upper}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{LinearConstraint}\PYG{p}{(}\PYG{n}{matrix}\PYG{o}{.}\PYG{n}{tocsc}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n}{row\PYGZus{}lower}\PYG{p}{,} \PYG{n}{row\PYGZus{}upper}\PYG{p}{)}\PYG{p}{,} \PYG{n}{blocks}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{solve\PYGZus{}model}\PYG{p}{(}\PYG{n}{model}\PYG{p}{:} \PYG{n}{Model}\PYG{p}{,} \PYG{o}{*}\PYG{p}{,} \PYG{n}{time\PYGZus{}limit}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{60.0}\PYG{p}{,}
+        \PYG{n}{relative\PYGZus{}gap}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{relax}\PYG{p}{:} \PYG{n+nb}{bool} \PYG{o}{=} \PYG{k+kc}{False}\PYG{p}{,}
+        \PYG{n}{fixed\PYGZus{}z}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray} \PYG{o}{|} \PYG{k+kc}{None} \PYG{o}{=} \PYG{k+kc}{None}\PYG{p}{)}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}精确 MILP；relax=True 仅用于 LP 下界诊断。}
+
+\PYG{l+s+sd}{        fixed\PYGZus{}z 给定完整 0/1 模式后，剩余问题是 LP。这是未来 GA+LP 的内层接口。}
+\PYG{l+s+sd}{        该接口不使用罚函数，不自动放宽日末条件，也不修补不可行模式。}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{n}{time\PYGZus{}limit} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{l+m+mi}{0} \PYG{o+ow}{or} \PYG{n}{relative\PYGZus{}gap} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{求解时间须为正，最优性间隙须非负}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{lower}\PYG{p}{,} \PYG{n}{upper} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{bounds}\PYG{o}{.}\PYG{n}{lb}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n}{model}\PYG{o}{.}\PYG{n}{bounds}\PYG{o}{.}\PYG{n}{ub}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{integer} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{integrality}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{relax}\PYG{p}{:}
+        \PYG{n}{integer}\PYG{p}{[}\PYG{p}{:}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{0}
+        \PYG{k}{if} \PYG{n}{fixed\PYGZus{}z} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{mode} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{fixed\PYGZus{}z}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}
+        \PYG{n}{block} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{mode}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{!=} \PYG{p}{(}\PYG{n}{block}\PYG{o}{.}\PYG{n}{stop} \PYG{o}{\PYGZhy{}} \PYG{n}{block}\PYG{o}{.}\PYG{n}{start}\PYG{p}{,}\PYG{p}{)} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isin}\PYG{p}{(}\PYG{n}{mode}\PYG{p}{,} \PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{fixed\PYGZus{}z 必须为与时段数相同的 0/1 向量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{block}\PYG{p}{]} \PYG{o}{=} \PYG{n}{upper}\PYG{p}{[}\PYG{n}{block}\PYG{p}{]} \PYG{o}{=} \PYG{n}{mode}
+        \PYG{n}{integer}\PYG{p}{[}\PYG{p}{:}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{0}
+        \PYG{n}{start} \PYG{o}{=} \PYG{n}{perf\PYGZus{}counter}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{result} \PYG{o}{=} \PYG{n}{milp}\PYG{p}{(}\PYG{n}{model}\PYG{o}{.}\PYG{n}{objective}\PYG{p}{,} \PYG{n}{integrality}\PYG{o}{=}\PYG{n}{integer}\PYG{p}{,}
+        \PYG{n}{bounds}\PYG{o}{=}\PYG{n}{Bounds}\PYG{p}{(}\PYG{n}{lower}\PYG{p}{,} \PYG{n}{upper}\PYG{p}{)}\PYG{p}{,} \PYG{n}{constraints}\PYG{o}{=}\PYG{n}{model}\PYG{o}{.}\PYG{n}{constraints}\PYG{p}{,}
+        \PYG{n}{options}\PYG{o}{=}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{time\PYGZus{}limit}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{time\PYGZus{}limit}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mip\PYGZus{}rel\PYGZus{}gap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{relative\PYGZus{}gap}\PYG{p}{\PYGZcb{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{result}\PYG{p}{,} \PYG{n}{perf\PYGZus{}counter}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{start}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{validate\PYGZus{}solution}\PYG{p}{(}\PYG{n}{data}\PYG{p}{:} \PYG{n}{Inputs}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{:} \PYG{n}{Battery}\PYG{p}{,} \PYG{n}{model}\PYG{p}{:} \PYG{n}{Model}\PYG{p}{,}
+        \PYG{n}{x}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{tolerance}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{1e\PYGZhy{}5}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{dict}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}独立用物理关系核验解，不仅检查求解器的成功标志。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{n}{x} \PYG{o+ow}{is} \PYG{k+kc}{None} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{没有有限的可行解}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{g}\PYG{p}{,} \PYG{n}{c}\PYG{p}{,} \PYG{n}{d}\PYG{p}{,} \PYG{n}{state}\PYG{p}{,} \PYG{n}{mode} \PYG{o}{=} \PYG{p}{[}\PYG{n}{x}\PYG{p}{[}\PYG{n}{model}\PYG{o}{.}\PYG{n}{blocks}\PYG{p}{[}\PYG{n}{key}\PYG{p}{]}\PYG{p}{]} \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{]}
+        \PYG{n}{load}\PYG{p}{,} \PYG{n}{pv} \PYG{o}{=} \PYG{n}{data}\PYG{o}{.}\PYG{n}{load\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}\PYG{p}{,} \PYG{n}{data}\PYG{o}{.}\PYG{n}{pv\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}
+        \PYG{n}{errors} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{balance\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{(}\PYG{n}{g} \PYG{o}{+} \PYG{n}{pv} \PYG{o}{+} \PYG{n}{d} \PYG{o}{\PYGZhy{}} \PYG{n}{load} \PYG{o}{\PYGZhy{}} \PYG{n}{c}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}transition\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{(}
+            \PYG{n}{np}\PYG{o}{.}\PYG{n}{diff}\PYG{p}{(}\PYG{n}{state}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}c} \PYG{o}{*} \PYG{n}{c} \PYG{o}{+} \PYG{n}{d} \PYG{o}{/} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}d}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}bounds\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{battery}\PYG{o}{.}\PYG{n}{minimum} \PYG{o}{\PYGZhy{}} \PYG{n}{state}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{boundary\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n+nb}{max}\PYG{p}{(}\PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{initial}\PYG{p}{)}\PYG{p}{,} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{initial}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{nonnegative\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n+nb}{min}\PYG{p}{(}\PYG{n}{g}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n}{c}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n}{d}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{charge\PYGZus{}limit\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{c} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{charge\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt} \PYG{o}{*} \PYG{n}{mode}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{discharge\PYGZus{}limit\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{d} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{discharge\PYGZus{}kw} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt} \PYG{o}{*} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{mode}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mode\PYGZus{}bounds}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n}{mode}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{mode}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mode\PYGZus{}integrality}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{(}\PYG{n}{mode} \PYG{o}{\PYGZhy{}} \PYG{n}{np}\PYG{o}{.}\PYG{n}{rint}\PYG{p}{(}\PYG{n}{mode}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{simultaneous\PYGZus{}flow\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{minimum}\PYG{p}{(}\PYG{n}{c}\PYG{p}{,} \PYG{n}{d}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{daily\PYGZus{}cycle\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{d}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}c} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}d} \PYG{o}{*} \PYG{n}{c}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{daily\PYGZus{}energy\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{g}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{load}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{+} \PYG{n}{pv}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}
+            \PYG{o}{\PYGZhy{}} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}c} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{eta\PYGZus{}d}\PYG{p}{)} \PYG{o}{*} \PYG{n}{c}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{failures} \PYG{o}{=} \PYG{p}{\PYGZob{}}\PYG{n}{key}\PYG{p}{:} \PYG{n}{value} \PYG{k}{for} \PYG{n}{key}\PYG{p}{,} \PYG{n}{value} \PYG{o+ow}{in} \PYG{n}{errors}\PYG{o}{.}\PYG{n}{items}\PYG{p}{(}\PYG{p}{)} \PYG{k}{if} \PYG{n}{value} \PYG{o}{\PYGZgt{}} \PYG{n}{tolerance}\PYG{p}{\PYGZcb{}}
+        \PYG{k}{if} \PYG{n}{failures}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{解未通过可行性检查：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{failures}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{passed}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{k+kc}{True}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{absolute\PYGZus{}tolerance}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{tolerance}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{residuals}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{errors}\PYG{p}{\PYGZcb{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{clock\PYGZus{}label}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{str}\PYG{p}{:}
+        \PYG{k}{return} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{minutes}\PYG{+w}{ }\PYG{o}{/}\PYG{o}{/}\PYG{+w}{ }\PYG{l+m+mi}{60}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{:}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{minutes}\PYG{+w}{ }\PYG{o}{\PYGZpc{}}\PYG{+w}{ }\PYG{l+m+mi}{60}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{result\PYGZus{}clock}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{str}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}把绝对分钟数格式化为 result1 模板使用的时间标签。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{day}\PYG{p}{,} \PYG{n}{minute\PYGZus{}of\PYGZus{}day} \PYG{o}{=} \PYG{n+nb}{divmod}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{,} \PYG{l+m+mi}{24} \PYG{o}{*} \PYG{l+m+mi}{60}\PYG{p}{)}
+        \PYG{n}{hour}\PYG{p}{,} \PYG{n}{minute} \PYG{o}{=} \PYG{n+nb}{divmod}\PYG{p}{(}\PYG{n}{minute\PYGZus{}of\PYGZus{}day}\PYG{p}{,} \PYG{l+m+mi}{60}\PYG{p}{)}
+        \PYG{n}{suffix} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{+1}\PYG{l+s+s2}{\PYGZdq{}} \PYG{k}{if} \PYG{n}{day} \PYG{k}{else} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{k}{return} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{hour}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{:}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{minute}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{suffix}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{normalize\PYGZus{}interval}\PYG{p}{(}\PYG{n}{label}\PYG{p}{:} \PYG{n+nb}{str}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{str}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}统一模板和内部区间的格式，例如 00:00\PYGZhy{}04:00 \PYGZhy{}\PYGZgt{} 0:00\PYGZhy{}4:00。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{n}{start}\PYG{p}{,} \PYG{n}{end} \PYG{o}{=} \PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{label}\PYG{p}{)}\PYG{o}{.}\PYG{n}{strip}\PYG{p}{(}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{maxsplit}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{start\PYGZus{}minutes} \PYG{o}{=} \PYG{n}{time\PYGZus{}minutes}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}
+        \PYG{n}{end\PYGZus{}minutes} \PYG{o}{=} \PYG{n}{time\PYGZus{}minutes}\PYG{p}{(}\PYG{n}{end}\PYG{p}{)}
+        \PYG{k}{except} \PYG{p}{(}\PYG{n+ne}{TypeError}\PYG{p}{,} \PYG{n+ne}{ValueError}\PYG{p}{)} \PYG{k}{as} \PYG{n}{exc}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{无法识别时间段：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{label}\PYG{l+s+si}{!r\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)} \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{exc}
+        \PYG{k}{return} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result\PYGZus{}clock}\PYG{p}{(}\PYG{n}{start\PYGZus{}minutes}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result\PYGZus{}clock}\PYG{p}{(}\PYG{n}{end\PYGZus{}minutes}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{write\PYGZus{}result\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{template}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,} \PYG{n}{output}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,} \PYG{n}{payload}\PYG{p}{:} \PYG{n+nb}{dict}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}按官方 result1 模板结构写入题目要求的计划购电与充放电结果。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{template}\PYG{o}{.}\PYG{n}{exists}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{FileNotFoundError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{找不到 result1 模板：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{template}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{dispatch} \PYG{o}{=} \PYG{n}{payload}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{ten\PYGZus{}minute\PYGZus{}dispatch}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{dispatch}\PYG{p}{)} \PYG{o}{!=} \PYG{l+m+mi}{144}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{计划购电量应有 144 条，实际为 }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{dispatch}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 条}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{load\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{template}\PYG{p}{)}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{n}{plan} \PYG{o}{=} \PYG{n}{workbook}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{计划购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{plan}\PYG{o}{.}\PYG{n}{max\PYGZus{}row} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{145}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{“计划购电量”模板行数不足}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{offset}\PYG{p}{,} \PYG{n}{item} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{dispatch}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{row} \PYG{o}{=} \PYG{n}{offset} \PYG{o}{+} \PYG{l+m+mi}{2}
+        \PYG{n}{start\PYGZus{}minutes} \PYG{o}{=} \PYG{n}{offset} \PYG{o}{*} \PYG{l+m+mi}{10}
+        \PYG{n}{end\PYGZus{}minutes} \PYG{o}{=} \PYG{n}{start\PYGZus{}minutes} \PYG{o}{+} \PYG{l+m+mi}{10}
+        \PYG{n}{plan}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value} \PYG{o}{=} \PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result\PYGZus{}clock}\PYG{p}{(}\PYG{n}{start\PYGZus{}minutes}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result\PYGZus{}clock}\PYG{p}{(}\PYG{n}{end\PYGZus{}minutes}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{p}{)}
+        \PYG{n}{plan}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{item}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{purchase\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+
+        \PYG{n}{battery\PYGZus{}sheet} \PYG{o}{=} \PYG{n}{workbook}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充放电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{n}{four\PYGZus{}hour\PYGZus{}map} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{n}{normalize\PYGZus{}interval}\PYG{p}{(}\PYG{n}{item}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{interval}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}\PYG{p}{:} \PYG{n}{item}
+            \PYG{k}{for} \PYG{n}{item} \PYG{o+ow}{in} \PYG{n}{payload}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{four\PYGZus{}hour\PYGZus{}summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{matched} \PYG{o}{=} \PYG{n+nb}{set}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{label} \PYG{o}{=} \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value}
+        \PYG{k}{if} \PYG{n}{label} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{k}{continue}
+        \PYG{n}{key} \PYG{o}{=} \PYG{n}{normalize\PYGZus{}interval}\PYG{p}{(}\PYG{n}{label}\PYG{p}{)}
+        \PYG{n}{item} \PYG{o}{=} \PYG{n}{four\PYGZus{}hour\PYGZus{}map}\PYG{o}{.}\PYG{n}{get}\PYG{p}{(}\PYG{n}{key}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{item} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充放电模板中存在未匹配区间：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{label}\PYG{l+s+si}{!r\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{item}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{charge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+        \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{item}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{discharge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+        \PYG{n}{matched}\PYG{o}{.}\PYG{n}{add}\PYG{p}{(}\PYG{n}{key}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{matched} \PYG{o}{!=} \PYG{n+nb}{set}\PYG{p}{(}\PYG{n}{four\PYGZus{}hour\PYGZus{}map}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{missing} \PYG{o}{=} \PYG{n+nb}{sorted}\PYG{p}{(}\PYG{n+nb}{set}\PYG{p}{(}\PYG{n}{four\PYGZus{}hour\PYGZus{}map}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{matched}\PYG{p}{)}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充放电模板缺少区间：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{missing}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{summary} \PYG{o}{=} \PYG{n}{payload}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{n}{storage\PYGZus{}values} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{0:00}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{summary}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}initial\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{24:00}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{summary}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}final\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{label} \PYG{o}{=} \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{4}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value}
+        \PYG{k}{if} \PYG{n}{label} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{k}{continue}
+        \PYG{n}{value} \PYG{o}{=} \PYG{n}{storage\PYGZus{}values}\PYG{o}{.}\PYG{n}{get}\PYG{p}{(}\PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{label}\PYG{p}{)}\PYG{o}{.}\PYG{n}{strip}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{value} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{cell}\PYG{p}{(}\PYG{n}{row}\PYG{o}{=}\PYG{n}{row}\PYG{p}{,} \PYG{n}{column}\PYG{o}{=}\PYG{l+m+mi}{5}\PYG{p}{)}\PYG{o}{.}\PYG{n}{value} \PYG{o}{=} \PYG{n}{value}
+
+        \PYG{n}{output}\PYG{o}{.}\PYG{n}{parent}\PYG{o}{.}\PYG{n}{mkdir}\PYG{p}{(}\PYG{n}{parents}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{save}\PYG{p}{(}\PYG{n}{output}\PYG{p}{)}
+        \PYG{k}{finally}\PYG{p}{:}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{close}\PYG{p}{(}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{save\PYGZus{}results}\PYG{p}{(}\PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,} \PYG{n}{source}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,} \PYG{n}{data}\PYG{p}{:} \PYG{n}{Inputs}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{:} \PYG{n}{Battery}\PYG{p}{,}
+        \PYG{n}{model}\PYG{p}{:} \PYG{n}{Model}\PYG{p}{,} \PYG{n}{result}\PYG{p}{,} \PYG{n}{elapsed}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{,} \PYG{n}{checks}\PYG{p}{:} \PYG{n+nb}{dict}\PYG{p}{,}
+        \PYG{n}{relaxation}\PYG{p}{:} \PYG{n+nb}{dict} \PYG{o}{|} \PYG{k+kc}{None}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{dict}\PYG{p}{:}
+        \PYG{n}{g}\PYG{p}{,} \PYG{n}{c}\PYG{p}{,} \PYG{n}{d}\PYG{p}{,} \PYG{n}{state}\PYG{p}{,} \PYG{n}{mode} \PYG{o}{=} \PYG{p}{[}\PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{model}\PYG{o}{.}\PYG{n}{blocks}\PYG{p}{[}\PYG{n}{key}\PYG{p}{]}\PYG{p}{]} \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{]}
+        \PYG{n}{periods} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{periods}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{start}\PYG{p}{,} \PYG{n}{end} \PYG{o}{=} \PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{t} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt} \PYG{o}{*} \PYG{l+m+mi}{60}\PYG{p}{)}\PYG{p}{,} \PYG{n+nb}{round}\PYG{p}{(}\PYG{p}{(}\PYG{n}{t} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt} \PYG{o}{*} \PYG{l+m+mi}{60}\PYG{p}{)}
+        \PYG{n}{periods}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{t}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{t} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{interval}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock\PYGZus{}label}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock\PYGZus{}label}\PYG{p}{(}\PYG{n}{end}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{source\PYGZus{}end\PYGZus{}time}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{clock\PYGZus{}label}\PYG{p}{(}\PYG{n}{end}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{price\PYGZus{}yuan\PYGZus{}per\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{price}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{load\PYGZus{}kw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{load\PYGZus{}kw}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pv\PYGZus{}kw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{pv\PYGZus{}kw}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{purchase\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{g}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{charge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{c}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{discharge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{d}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}start\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{n}{t} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{mode}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{cost\PYGZus{}yuan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{price}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{*} \PYG{n}{g}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{)}
+        \PYG{n}{blocks} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{k}{for} \PYG{n}{k} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{6}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{lo}\PYG{p}{,} \PYG{n}{hi} \PYG{o}{=} \PYG{l+m+mi}{24} \PYG{o}{*} \PYG{n}{k}\PYG{p}{,} \PYG{l+m+mi}{24} \PYG{o}{*} \PYG{p}{(}\PYG{n}{k} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{blocks}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{interval}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock\PYGZus{}label}\PYG{p}{(}\PYG{l+m+mi}{240}\PYG{o}{*}\PYG{n}{k}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock\PYGZus{}label}\PYG{p}{(}\PYG{l+m+mi}{240}\PYG{o}{*}\PYG{p}{(}\PYG{n}{k}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{charge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{c}\PYG{p}{[}\PYG{n}{lo}\PYG{p}{:}\PYG{n}{hi}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{discharge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{d}\PYG{p}{[}\PYG{n}{lo}\PYG{p}{:}\PYG{n}{hi}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{)}
+        \PYG{n}{summary} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{purchase\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{g}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{cost\PYGZus{}yuan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{price} \PYG{o}{@} \PYG{n}{g}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{charge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{c}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{discharge\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{d}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}initial\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}final\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}min\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}max\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{state}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{load\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{load\PYGZus{}kw}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pv\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{data}\PYG{o}{.}\PYG{n}{pv\PYGZus{}kw}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{*} \PYG{n}{battery}\PYG{o}{.}\PYG{n}{dt}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{storage\PYGZus{}loss\PYGZus{}kwh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{c}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{d}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{optional\PYGZus{}number}\PYG{p}{(}\PYG{n}{key}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{value} \PYG{o}{=} \PYG{n}{result}\PYG{o}{.}\PYG{n}{get}\PYG{p}{(}\PYG{n}{key}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)} \PYG{k}{if} \PYG{n}{value} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None} \PYG{o+ow}{and} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)} \PYG{k}{else} \PYG{k+kc}{None}
+        \PYG{n}{payload} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{input}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{source}\PYG{o}{.}\PYG{n}{resolve}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{battery}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{asdict}\PYG{p}{(}\PYG{n}{battery}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{assumptions}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{输入时间为时段结束时刻，功率视为时段平均功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏全部消纳，不售电}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充放电效率各90}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+s2}{，电量及功率上限按电池外部计量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日初日末储电量均6000kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solver}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{name}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{scipy.optimize.milp / HiGHS}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{scipy\PYGZus{}version}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{scipy}\PYG{o}{.}\PYG{n}{\PYGZus{}\PYGZus{}version\PYGZus{}\PYGZus{}}\PYG{p}{,}
+                \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{status}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{result}\PYG{o}{.}\PYG{n}{status}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{message}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{result}\PYG{o}{.}\PYG{n}{message}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{seconds}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{elapsed}\PYG{p}{,}
+                \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{optimal\PYGZus{}within\PYGZus{}solver\PYGZus{}tolerances}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{bool}\PYG{p}{(}\PYG{n}{result}\PYG{o}{.}\PYG{n}{status} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{p}{,}
+                \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mip\PYGZus{}gap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{optional\PYGZus{}number}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mip\PYGZus{}gap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{lower\PYGZus{}bound\PYGZus{}yuan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{optional\PYGZus{}number}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mip\PYGZus{}dual\PYGZus{}bound}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{summary}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{validation}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{checks}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{lp\PYGZus{}relaxation\PYGZus{}diagnostic}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{relaxation}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{four\PYGZus{}hour\PYGZus{}summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{blocks}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{ten\PYGZus{}minute\PYGZus{}dispatch}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{periods}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{path}\PYG{o}{.}\PYG{n}{mkdir}\PYG{p}{(}\PYG{n}{parents}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{p}{(}\PYG{n}{path} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solution.json}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{write\PYGZus{}text}\PYG{p}{(}\PYG{n}{json}\PYG{o}{.}\PYG{n}{dumps}\PYG{p}{(}\PYG{n}{payload}\PYG{p}{,} \PYG{n}{ensure\PYGZus{}ascii}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{,} \PYG{n}{indent}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{allow\PYGZus{}nan}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{)}\PYG{p}{,} \PYG{n}{encoding}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{utf\PYGZhy{}8}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{lines} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZsh{} 第一问基础 MILP 求解结果}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{采用输入标签为时段结束时刻的约定，光伏全部消纳。}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 求解状态：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result}\PYG{o}{.}\PYG{n}{message}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 求解时间：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{elapsed}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 秒}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 最优性相对间隙：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{optional\PYGZus{}number}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{mip\PYGZus{}gap}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 全天购电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{summary}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{purchase\PYGZus{}kwh}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 全天购电费：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{summary}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{cost\PYGZus{}yuan}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 元}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 日初 / 日末储电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ / }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{state}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{} 全部物理约束检查通过。}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZsh{}\PYGZsh{} 表 1：指定时段购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{| 时段 | 购电量（kWh） |}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{|\PYGZhy{}\PYGZhy{}\PYGZhy{}|\PYGZhy{}\PYGZhy{}\PYGZhy{}:|}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+m+mi}{60}\PYG{p}{,} \PYG{l+m+mi}{72}\PYG{p}{,} \PYG{l+m+mi}{84}\PYG{p}{,} \PYG{l+m+mi}{96}\PYG{p}{,} \PYG{l+m+mi}{108}\PYG{p}{,} \PYG{l+m+mi}{120}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{lines}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{| }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{periods}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{interval}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{g}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ |}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{lines} \PYG{o}{+}\PYG{o}{=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZsh{}\PYGZsh{} 表 2：四小时充放电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{| 时段 | 充电量（kWh） | 放电量（kWh） |}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{|\PYGZhy{}\PYGZhy{}\PYGZhy{}|\PYGZhy{}\PYGZhy{}\PYGZhy{}:|\PYGZhy{}\PYGZhy{}\PYGZhy{}:|}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{k}{for} \PYG{n}{block} \PYG{o+ow}{in} \PYG{n}{blocks}\PYG{p}{:}
+        \PYG{n}{lines}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{| }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{block}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{interval}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{block}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{charge\PYGZus{}kwh}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{block}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{discharge\PYGZus{}kwh}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ |}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{lines} \PYG{o}{+}\PYG{o}{=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{完整 144 时段结果及约束残差见 solution.json；题目要求的表格结果见 result1\PYGZus{}chatgpt.xlsx。}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{p}{(}\PYG{n}{path} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{summary.md}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{write\PYGZus{}text}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{o}{.}\PYG{n}{join}\PYG{p}{(}\PYG{n}{lines}\PYG{p}{)}\PYG{p}{,} \PYG{n}{encoding}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{utf\PYGZhy{}8}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{payload}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{main}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{int}\PYG{p}{:}
+        \PYG{n}{parser} \PYG{o}{=} \PYG{n}{argparse}\PYG{o}{.}\PYG{n}{ArgumentParser}\PYG{p}{(}\PYG{n}{description}\PYG{o}{=}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}doc\PYGZus{}\PYGZus{}}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}input}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{,} \PYG{n}{default}\PYG{o}{=}\PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件1.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}output\PYGZhy{}dir}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{,} \PYG{n}{default}\PYG{o}{=}\PYG{n}{RESULT\PYGZus{}DIR}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}excel\PYGZhy{}template}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{,}
+        \PYG{n}{default}\PYG{o}{=}\PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件5}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result1.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}excel\PYGZhy{}output}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{,}
+        \PYG{n}{default}\PYG{o}{=}\PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result01.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}time\PYGZhy{}limit}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{,} \PYG{n}{default}\PYG{o}{=}\PYG{l+m+mf}{60.0}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}mip\PYGZhy{}rel\PYGZhy{}gap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{,} \PYG{n}{default}\PYG{o}{=}\PYG{l+m+mf}{0.0}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}check\PYGZhy{}lp\PYGZhy{}relaxation}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{action}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{store\PYGZus{}true}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{help}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{额外求 LP 松弛下界，仅诊断，不替代 MILP 决策}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{args} \PYG{o}{=} \PYG{n}{parser}\PYG{o}{.}\PYG{n}{parse\PYGZus{}args}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{data}\PYG{p}{,} \PYG{n}{battery} \PYG{o}{=} \PYG{n}{load\PYGZus{}inputs}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{input}\PYG{p}{)}\PYG{p}{,} \PYG{n}{Battery}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{model} \PYG{o}{=} \PYG{n}{build\PYGZus{}model}\PYG{p}{(}\PYG{n}{data}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{)}
+        \PYG{n}{result}\PYG{p}{,} \PYG{n}{elapsed} \PYG{o}{=} \PYG{n}{solve\PYGZus{}model}\PYG{p}{(}\PYG{n}{model}\PYG{p}{,} \PYG{n}{time\PYGZus{}limit}\PYG{o}{=}\PYG{n}{args}\PYG{o}{.}\PYG{n}{time\PYGZus{}limit}\PYG{p}{,} \PYG{n}{relative\PYGZus{}gap}\PYG{o}{=}\PYG{n}{args}\PYG{o}{.}\PYG{n}{mip\PYGZus{}rel\PYGZus{}gap}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{result}\PYG{o}{.}\PYG{n}{x} \PYG{o+ow}{is} \PYG{k+kc}{None} \PYG{o+ow}{or} \PYG{n}{result}\PYG{o}{.}\PYG{n}{status} \PYG{o+ow}{not} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{RuntimeError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{求解失败，未输出调度结果：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result}\PYG{o}{.}\PYG{n}{message}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{checks} \PYG{o}{=} \PYG{n}{validate\PYGZus{}solution}\PYG{p}{(}\PYG{n}{data}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{,} \PYG{n}{model}\PYG{p}{,} \PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{)}
+        \PYG{n}{relaxation} \PYG{o}{=} \PYG{k+kc}{None}
+        \PYG{k}{if} \PYG{n}{args}\PYG{o}{.}\PYG{n}{check\PYGZus{}lp\PYGZus{}relaxation}\PYG{p}{:}
+        \PYG{n}{lp}\PYG{p}{,} \PYG{n}{lp\PYGZus{}elapsed} \PYG{o}{=} \PYG{n}{solve\PYGZus{}model}\PYG{p}{(}\PYG{n}{model}\PYG{p}{,} \PYG{n}{time\PYGZus{}limit}\PYG{o}{=}\PYG{n}{args}\PYG{o}{.}\PYG{n}{time\PYGZus{}limit}\PYG{p}{,} \PYG{n}{relax}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{relaxation} \PYG{o}{=} \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{status}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{lp}\PYG{o}{.}\PYG{n}{status}\PYG{p}{)}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{message}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{lp}\PYG{o}{.}\PYG{n}{message}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{seconds}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{lp\PYGZus{}elapsed}\PYG{p}{\PYGZcb{}}
+        \PYG{k}{if} \PYG{n}{lp}\PYG{o}{.}\PYG{n}{status} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{n}{relaxation}\PYG{o}{.}\PYG{n}{update}\PYG{p}{(}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{lower\PYGZus{}bound\PYGZus{}yuan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{lp}\PYG{o}{.}\PYG{n}{fun}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{milp\PYGZus{}minus\PYGZus{}lp\PYGZus{}yuan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{result}\PYG{o}{.}\PYG{n}{fun} \PYG{o}{\PYGZhy{}} \PYG{n}{lp}\PYG{o}{.}\PYG{n}{fun}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{simultaneous\PYGZus{}slots}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{count\PYGZus{}nonzero}\PYG{p}{(}
+            \PYG{p}{(}\PYG{n}{lp}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{model}\PYG{o}{.}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{c}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mf}{1e\PYGZhy{}5}\PYG{p}{)} \PYG{o}{\PYGZam{}} \PYG{p}{(}\PYG{n}{lp}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{model}\PYG{o}{.}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{d}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mf}{1e\PYGZhy{}5}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{)}
+        \PYG{n}{payload} \PYG{o}{=} \PYG{n}{save\PYGZus{}results}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{output\PYGZus{}dir}\PYG{p}{,} \PYG{n}{args}\PYG{o}{.}\PYG{n}{input}\PYG{p}{,} \PYG{n}{data}\PYG{p}{,} \PYG{n}{battery}\PYG{p}{,} \PYG{n}{model}\PYG{p}{,} \PYG{n}{result}\PYG{p}{,} \PYG{n}{elapsed}\PYG{p}{,} \PYG{n}{checks}\PYG{p}{,} \PYG{n}{relaxation}\PYG{p}{)}
+        \PYG{n}{write\PYGZus{}result\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{excel\PYGZus{}template}\PYG{p}{,} \PYG{n}{args}\PYG{o}{.}\PYG{n}{excel\PYGZus{}output}\PYG{p}{,} \PYG{n}{payload}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{json}\PYG{o}{.}\PYG{n}{dumps}\PYG{p}{(}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solver}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{payload}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solver}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{payload}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{summary}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{lp\PYGZus{}relaxation}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n}{relaxation}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{output\PYGZus{}dir}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{output\PYGZus{}dir}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{excel\PYGZus{}output}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{str}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{excel\PYGZus{}output}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{,} \PYG{n}{ensure\PYGZus{}ascii}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{,} \PYG{n}{indent}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{)}
+        \PYG{c+c1}{\PYGZsh{} 达到时间限制但有可行解时保存结果，以非零退出码明确其未证明最优。}
+        \PYG{k}{return} \PYG{l+m+mi}{0} \PYG{k}{if} \PYG{n}{result}\PYG{o}{.}\PYG{n}{status} \PYG{o}{==} \PYG{l+m+mi}{0} \PYG{k}{else} \PYG{l+m+mi}{2}
+
+
+        \PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{SystemExit}\PYG{p}{(}\PYG{n}{main}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}
+
+\end{MintedVerbatim}

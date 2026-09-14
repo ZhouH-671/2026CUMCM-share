@@ -1,0 +1,8 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem03\plot\plot.py
+最优裕度：0:00-6:00=0.600，6:00后=0.600，总费用=1355.78 万元
+已输出：E:\My\2026CUMCM-share\release\result\problem03\plot\fig1_margin_curves.png
+已输出：E:\My\2026CUMCM-share\release\result\problem03\plot\fig2_margin_heatmap.png
+已输出：E:\My\2026CUMCM-share\release\result\problem03\plot\fig3_tradeoff.png
+已输出：E:\My\2026CUMCM-share\release\result\problem03\plot\best_config.md
+
+进程已结束，退出代码为 0

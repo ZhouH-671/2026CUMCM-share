@@ -1,0 +1,31 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem01\problem01.py
+{
+  "solver": {
+    "name": "scipy.optimize.milp / HiGHS",
+    "scipy_version": "1.18.1",
+    "status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "seconds": 0.05388589999893156,
+    "optimal_within_solver_tolerances": true,
+    "mip_gap": 0.0,
+    "lower_bound_yuan": 35126.94858928963
+  },
+  "summary": {
+    "purchase_kwh": 59482.69899835391,
+    "cost_yuan": 35126.94858928963,
+    "charge_kwh": 20740.666131687245,
+    "discharge_kwh": 16799.939566666668,
+    "storage_initial_kwh": 6000.0,
+    "storage_final_kwh": 6000.0,
+    "storage_min_kwh": 1200.0,
+    "storage_max_kwh": 10800.0,
+    "load_kwh": 111024.80809999998,
+    "pv_kwh": 55482.835666666666,
+    "storage_loss_kwh": 3940.7265650205773
+  },
+  "lp_relaxation": null,
+  "output_dir": "E:\\My\\2026CUMCM-share\\release\\result\\problem01",
+  "excel_output": "E:\\My\\2026CUMCM-share\\release\\result\\problem01\\result01.xlsx"
+}
+
+进程已结束，退出代码为 0

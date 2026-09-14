@@ -1,0 +1,7 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem02\prediction\prediction_storage.py
+2025-01-01 0:00 储电量：6000.000000 kWh
+2025-01-31 0:00 储电量：10800.000000 kWh
+2025-02-01 0:00 储电量：10800.000000 kWh
+表格已保存：E:\My\2026CUMCM-share\release\result\problem02\prediction\january_soc_2025.xlsx
+
+进程已结束，退出代码为 0

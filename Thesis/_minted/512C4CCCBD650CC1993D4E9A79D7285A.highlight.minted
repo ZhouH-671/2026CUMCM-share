@@ -1,0 +1,146 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+
+        \PYG{c+c1}{\PYGZsh{} 小区负载和光伏发电量结果预测代码}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{\PYGZus{}\PYGZus{}future\PYGZus{}\PYGZus{}}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{annotations}
+
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{datetime}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{date}\PYG{p}{,} \PYG{n}{datetime}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{pathlib}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Path}
+
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{openpyxl}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{openpyxl}\PYG{n+nn}{.}\PYG{n+nn}{styles}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Alignment}\PYG{p}{,} \PYG{n}{Font}\PYG{p}{,} \PYG{n}{PatternFill}
+
+        \PYG{n}{ROOT} \PYG{o}{=} \PYG{n}{Path}\PYG{p}{(}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}file\PYGZus{}\PYGZus{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{resolve}\PYG{p}{(}\PYG{p}{)}\PYG{o}{.}\PYG{n}{parents}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}
+        \PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{problem02}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prediction}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{n}{START\PYGZus{}DATE} \PYG{o}{=} \PYG{n}{date}\PYG{p}{(}\PYG{l+m+mi}{2025}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{END\PYGZus{}DATE} \PYG{o}{=} \PYG{n}{date}\PYG{p}{(}\PYG{l+m+mi}{2025}\PYG{p}{,} \PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{31}\PYG{p}{)}
+
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{src}\PYG{n+nn}{.}\PYG{n+nn}{problem02}\PYG{n+nn}{.}\PYG{n+nn}{evaluate}\PYG{n+nn}{.}\PYG{n+nn}{load}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{p}{(}  \PYG{c+c1}{\PYGZsh{} noqa: E402}
+        \PYG{n}{RollingRidgeLoadV4}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}history} \PYG{k}{as} \PYG{n}{load\PYGZus{}load\PYGZus{}history}\PYG{p}{,}
+        \PYG{n}{select\PYGZus{}lambda}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{src}\PYG{n+nn}{.}\PYG{n+nn}{problem02}\PYG{n+nn}{.}\PYG{n+nn}{evaluate}\PYG{n+nn}{.}\PYG{n+nn}{pv}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{p}{(}  \PYG{c+c1}{\PYGZsh{} noqa: E402}
+        \PYG{n}{ExpandingRidgePVV4}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}history} \PYG{k}{as} \PYG{n}{load\PYGZus{}pv\PYGZus{}history}\PYG{p}{,}
+        \PYG{n}{original\PYGZus{}historical\PYGZus{}prediction}\PYG{p}{,}
+        \PYG{n}{select\PYGZus{}parameters}\PYG{p}{,}
+        \PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{export\PYGZus{}times}\PYG{p}{(}\PYG{n}{time\PYGZus{}labels}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{]}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{]}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}保持附件 2 的时间列格式。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{result} \PYG{o}{=} \PYG{n}{time\PYGZus{}labels}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{result} \PYG{o+ow}{and} \PYG{n}{result}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{24:00}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:}
+        \PYG{n}{result}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{0:00+1}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{k}{return} \PYG{n}{result}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{write\PYGZus{}workbook}\PYG{p}{(}
+        \PYG{n}{output}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,}
+        \PYG{n}{dates}\PYG{p}{,}
+        \PYG{n}{time\PYGZus{}headers}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}values}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{pv\PYGZus{}values}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{Workbook}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{remove}\PYG{p}{(}\PYG{n}{workbook}\PYG{o}{.}\PYG{n}{active}\PYG{p}{)}
+        \PYG{n}{header\PYGZus{}fill} \PYG{o}{=} \PYG{n}{PatternFill}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solid}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{fgColor}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{D9EAF7}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{header\PYGZus{}font} \PYG{o}{=} \PYG{n}{Font}\PYG{p}{(}\PYG{n}{name}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{宋体}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{size}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{n}{bold}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{body\PYGZus{}font} \PYG{o}{=} \PYG{n}{Font}\PYG{p}{(}\PYG{n}{name}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{宋体}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{size}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+        \PYG{n}{center} \PYG{o}{=} \PYG{n}{Alignment}\PYG{p}{(}\PYG{n}{horizontal}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{center}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{vertical}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{center}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{datasets} \PYG{o}{=} \PYG{p}{(}
+        \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{load\PYGZus{}values}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电实际功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{pv\PYGZus{}values}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{sheet\PYGZus{}name}\PYG{p}{,} \PYG{n}{values} \PYG{o+ow}{in} \PYG{n}{datasets}\PYG{p}{:}
+        \PYG{n}{worksheet} \PYG{o}{=} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{create\PYGZus{}sheet}\PYG{p}{(}\PYG{n}{sheet\PYGZus{}name}\PYG{p}{)}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日期}\PYG{l+s+se}{\PYGZbs{}\PYGZbs{}}\PYG{l+s+s2}{时间}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{o}{*}\PYG{n}{time\PYGZus{}headers}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{day}\PYG{p}{,} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{dates}\PYG{p}{,} \PYG{n}{values}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{[}\PYG{n}{datetime}\PYG{o}{.}\PYG{n}{combine}\PYG{p}{(}\PYG{n}{day}\PYG{p}{,} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{min}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{o}{*}\PYG{n}{row}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{(}\PYG{p}{)}\PYG{p}{]}\PYG{p}{)}
+
+        \PYG{k}{for} \PYG{n}{cell} \PYG{o+ow}{in} \PYG{n}{worksheet}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{fill} \PYG{o}{=} \PYG{n}{header\PYGZus{}fill}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{font} \PYG{o}{=} \PYG{n}{header\PYGZus{}font}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{alignment} \PYG{o}{=} \PYG{n}{center}
+        \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{min\PYGZus{}row}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{number\PYGZus{}format} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{yyyy\PYGZhy{}mm\PYGZhy{}dd}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{alignment} \PYG{o}{=} \PYG{n}{center}
+        \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{font} \PYG{o}{=} \PYG{n}{body\PYGZus{}font}
+        \PYG{k}{for} \PYG{n}{cell} \PYG{o+ow}{in} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{number\PYGZus{}format} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{0.0000}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{font} \PYG{o}{=} \PYG{n}{body\PYGZus{}font}
+
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{freeze\PYGZus{}panes} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{B2}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{column\PYGZus{}dimensions}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{A}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{width} \PYG{o}{=} \PYG{l+m+mi}{13}
+        \PYG{k}{for} \PYG{n}{column} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{time\PYGZus{}headers}\PYG{p}{)} \PYG{o}{+} \PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{column\PYGZus{}dimensions}\PYG{p}{[}
+        \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{utils}\PYG{o}{.}\PYG{n}{get\PYGZus{}column\PYGZus{}letter}\PYG{p}{(}\PYG{n}{column}\PYG{p}{)}
+        \PYG{p}{]}\PYG{o}{.}\PYG{n}{width} \PYG{o}{=} \PYG{l+m+mi}{9}
+
+        \PYG{n}{output}\PYG{o}{.}\PYG{n}{parent}\PYG{o}{.}\PYG{n}{mkdir}\PYG{p}{(}\PYG{n}{parents}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{save}\PYG{p}{(}\PYG{n}{output}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{main}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{attachment} \PYG{o}{=} \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件2.xlsx}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{load\PYGZus{}time\PYGZus{}labels}\PYG{p}{,} \PYG{n}{load} \PYG{o}{=} \PYG{n}{load\PYGZus{}load\PYGZus{}history}\PYG{p}{(}\PYG{n}{attachment}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pv\PYGZus{}time\PYGZus{}labels}\PYG{p}{,} \PYG{n}{pv} \PYG{o}{=} \PYG{n}{load\PYGZus{}pv\PYGZus{}history}\PYG{p}{(}\PYG{n}{attachment}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{load\PYGZus{}dates} \PYG{o}{!=} \PYG{n}{pv\PYGZus{}dates} \PYG{o+ow}{or} \PYG{n}{load\PYGZus{}time\PYGZus{}labels} \PYG{o}{!=} \PYG{n}{pv\PYGZus{}time\PYGZus{}labels}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{负载和光伏表的日期或时间列不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{load\PYGZus{}lambda}\PYG{p}{,} \PYG{n}{load\PYGZus{}scores} \PYG{o}{=} \PYG{n}{select\PYGZus{}lambda}\PYG{p}{(}\PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{load}\PYG{p}{)}
+        \PYG{n}{load\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{RollingRidgeLoadV4}\PYG{p}{(}
+        \PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{load}\PYG{p}{,} \PYG{n}{load\PYGZus{}lambda}
+        \PYG{p}{)}\PYG{o}{.}\PYG{n}{historical\PYGZus{}prediction}
+
+        \PYG{n}{pv\PYGZus{}original} \PYG{o}{=} \PYG{n}{original\PYGZus{}historical\PYGZus{}prediction}\PYG{p}{(}\PYG{n}{pv}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}lambda}\PYG{p}{,} \PYG{n}{pv\PYGZus{}blend}\PYG{p}{,} \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{select\PYGZus{}parameters}\PYG{p}{(}
+        \PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pv}\PYG{p}{,} \PYG{n}{pv\PYGZus{}original}
+        \PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}ridge} \PYG{o}{=} \PYG{n}{ExpandingRidgePVV4}\PYG{p}{(}
+        \PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pv}\PYG{p}{,} \PYG{n}{pv\PYGZus{}lambda}
+        \PYG{p}{)}\PYG{o}{.}\PYG{n}{historical\PYGZus{}ridge}
+        \PYG{k}{with} \PYG{n}{np}\PYG{o}{.}\PYG{n}{errstate}\PYG{p}{(}\PYG{n}{invalid}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{ignore}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{pv\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{pv\PYGZus{}blend} \PYG{o}{*} \PYG{n}{pv\PYGZus{}original} \PYG{o}{+} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{pv\PYGZus{}blend}\PYG{p}{)} \PYG{o}{*} \PYG{n}{pv\PYGZus{}ridge}
+
+        \PYG{n}{selected} \PYG{o}{=} \PYG{p}{[}
+        \PYG{n}{index}
+        \PYG{k}{for} \PYG{n}{index}\PYG{p}{,} \PYG{n}{target\PYGZus{}date} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{load\PYGZus{}dates}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{START\PYGZus{}DATE} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{target\PYGZus{}date} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{END\PYGZus{}DATE}
+        \PYG{p}{]}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{selected}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{所选日期范围内没有预测数据}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{selected\PYGZus{}dates} \PYG{o}{=} \PYG{p}{[}\PYG{n}{load\PYGZus{}dates}\PYG{p}{[}\PYG{n}{index}\PYG{p}{]} \PYG{k}{for} \PYG{n}{index} \PYG{o+ow}{in} \PYG{n}{selected}\PYG{p}{]}
+        \PYG{n}{load\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{load\PYGZus{}prediction}\PYG{p}{[}\PYG{n}{selected}\PYG{p}{]}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{pv\PYGZus{}prediction}\PYG{p}{[}\PYG{n}{selected}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{load\PYGZus{}prediction}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{所选负载预测范围内存在缺失值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}prediction}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{所选光伏预测范围内存在缺失值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{output} \PYG{o}{=} \PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prediction.xlsx}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{write\PYGZus{}workbook}\PYG{p}{(}
+        \PYG{n}{output}\PYG{p}{,}
+        \PYG{n}{selected\PYGZus{}dates}\PYG{p}{,}
+        \PYG{n}{export\PYGZus{}times}\PYG{p}{(}\PYG{n}{load\PYGZus{}time\PYGZus{}labels}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}prediction}\PYG{p}{,}
+        \PYG{n}{pv\PYGZus{}prediction}\PYG{p}{,}
+        \PYG{p}{)}
+
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{负载参数：lambda=}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{load\PYGZus{}lambda}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{，得分=}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{load\PYGZus{}scores}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏参数：lambda=}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{pv\PYGZus{}lambda}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{，原方法融合权重=}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{pv\PYGZus{}blend}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{预测范围：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{START\PYGZus{}DATE}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 至 }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{END\PYGZus{}DATE}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{输出行数：}\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{selected\PYGZus{}dates}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 天，时间列：}\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{load\PYGZus{}time\PYGZus{}labels}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 个}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{表格已保存：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+
+        \PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:}
+        \PYG{n}{main}\PYG{p}{(}\PYG{p}{)}
+
+\end{MintedVerbatim}

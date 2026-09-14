@@ -1,0 +1,633 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+
+        \PYG{c+c1}{\PYGZsh{} 问题2核心代码}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{\PYGZus{}\PYGZus{}future\PYGZus{}\PYGZus{}}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{annotations}
+
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{argparse}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{csv}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{dataclasses}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{dataclass}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{datetime}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{date}\PYG{p}{,} \PYG{n}{datetime}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{pathlib}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Path}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{time}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{perf\PYGZus{}counter}
+
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+        \PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{openpyxl}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{openpyxl}\PYG{n+nn}{.}\PYG{n+nn}{styles}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Alignment}\PYG{p}{,} \PYG{n}{Font}\PYG{p}{,} \PYG{n}{PatternFill}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{openpyxl}\PYG{n+nn}{.}\PYG{n+nn}{utils}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{get\PYGZus{}column\PYGZus{}letter}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy}\PYG{n+nn}{.}\PYG{n+nn}{optimize}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Bounds}\PYG{p}{,} \PYG{n}{LinearConstraint}\PYG{p}{,} \PYG{n}{milp}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy}\PYG{n+nn}{.}\PYG{n+nn}{sparse}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{lil\PYGZus{}matrix}
+
+        \PYG{n}{ROOT} \PYG{o}{=} \PYG{n}{Path}\PYG{p}{(}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}file\PYGZus{}\PYGZus{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{resolve}\PYG{p}{(}\PYG{p}{)}\PYG{o}{.}\PYG{n}{parents}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}
+        \PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{problem02}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{=} \PYG{n}{ROOT} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{src}\PYG{n+nn}{.}\PYG{n+nn}{problem02}\PYG{n+nn}{.}\PYG{n+nn}{evaluate}\PYG{n+nn}{.}\PYG{n+nn}{load}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{p}{(}  \PYG{c+c1}{\PYGZsh{} noqa: E402}
+        \PYG{n}{RollingRidgeLoadV4}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}history} \PYG{k}{as} \PYG{n}{load\PYGZus{}load\PYGZus{}history}\PYG{p}{,}
+        \PYG{n}{select\PYGZus{}lambda}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{src}\PYG{n+nn}{.}\PYG{n+nn}{problem02}\PYG{n+nn}{.}\PYG{n+nn}{evaluate}\PYG{n+nn}{.}\PYG{n+nn}{pv}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{p}{(}  \PYG{c+c1}{\PYGZsh{} noqa: E402}
+        \PYG{n}{ExpandingRidgePVV4}\PYG{p}{,}
+        \PYG{n}{load\PYGZus{}history} \PYG{k}{as} \PYG{n}{load\PYGZus{}pv\PYGZus{}history}\PYG{p}{,}
+        \PYG{n}{original\PYGZus{}historical\PYGZus{}prediction}\PYG{p}{,}
+        \PYG{n}{select\PYGZus{}parameters}\PYG{p}{,}
+        \PYG{p}{)}
+
+
+        \PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY} \PYG{o}{=} \PYG{l+m+mi}{144}
+        \PYG{n}{DT} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{l+m+mi}{6}
+        \PYG{n}{SOC\PYGZus{}MIN} \PYG{o}{=} \PYG{l+m+mf}{1200.0}
+        \PYG{n}{SOC\PYGZus{}MAX} \PYG{o}{=} \PYG{l+m+mf}{10800.0}
+        \PYG{n}{SOC\PYGZus{}INITIAL} \PYG{o}{=} \PYG{l+m+mf}{6000.0}
+        \PYG{n}{ETA\PYGZus{}C} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+        \PYG{n}{ETA\PYGZus{}D} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+        \PYG{n}{POWER\PYGZus{}LIMIT} \PYG{o}{=} \PYG{l+m+mf}{5000.0} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{RISK\PYGZus{}QUANTILE} \PYG{o}{=} \PYG{l+m+mf}{0.80}
+        \PYG{n}{RESIDUAL\PYGZus{}WINDOW\PYGZus{}DAYS} \PYG{o}{=} \PYG{l+m+mi}{60}
+        \PYG{n}{OUTPUT\PYGZus{}START} \PYG{o}{=} \PYG{n}{date}\PYG{p}{(}\PYG{l+m+mi}{2025}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{OUTPUT\PYGZus{}END} \PYG{o}{=} \PYG{n}{date}\PYG{p}{(}\PYG{l+m+mi}{2025}\PYG{p}{,} \PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{31}\PYG{p}{)}
+
+
+        \PYG{n+nd}{@dataclass}\PYG{p}{(}\PYG{n}{frozen}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{DailyPlan}\PYG{p}{:}
+        \PYG{n}{purchase\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{charge\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{discharge\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+
+
+        \PYG{n+nd}{@dataclass}\PYG{p}{(}\PYG{n}{frozen}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{ActualResult}\PYG{p}{:}
+        \PYG{n}{storage\PYGZus{}initial\PYGZus{}kwh}\PYG{p}{:} \PYG{n+nb}{float}
+        \PYG{n}{charge\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{discharge\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{emergency\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{spill\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}
+        \PYG{n}{emergency\PYGZus{}runs}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{tuple}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{]}\PYG{p}{]}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{excel\PYGZus{}date}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{date}\PYG{p}{:}
+        \PYG{k}{if} \PYG{n+nb}{isinstance}\PYG{p}{(}\PYG{n}{value}\PYG{p}{,} \PYG{n}{datetime}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{return} \PYG{n}{value}\PYG{o}{.}\PYG{n}{date}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{isinstance}\PYG{p}{(}\PYG{n}{value}\PYG{p}{,} \PYG{n}{date}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{return} \PYG{n}{value}
+        \PYG{k}{raise} \PYG{n+ne}{TypeError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日期格式错误：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{value}\PYG{l+s+si}{!r\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{load\PYGZus{}price}\PYG{p}{(}\PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{:}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{load\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{path}\PYG{p}{,} \PYG{n}{read\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{data\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{n}{rows} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{workbook}\PYG{o}{.}\PYG{n}{active}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{values\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}\PYG{p}{)}
+        \PYG{k}{finally}\PYG{p}{:}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{close}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{tuple}\PYG{p}{(}\PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{4}\PYG{p}{]}\PYG{p}{)} \PYG{o}{!=} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{电价}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电预测功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 1 表头不匹配}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{values} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{p}{[}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{]}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{values}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{!=} \PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{,}\PYG{p}{)} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 1 电价数据必须是 144 个有限数值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{p}{(}\PYG{n}{values} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{o}{.}\PYG{n}{any}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 1 电价不能为负}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{values}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{load\PYGZus{}actual\PYGZus{}series}\PYG{p}{(}\PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{tuple}\PYG{p}{[}\PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{load\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{path}\PYG{p}{,} \PYG{n}{read\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{data\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{k}{if} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{sheetnames}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{!=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电实际功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 2 工作表名称或顺序不匹配}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{matrices} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{n}{dates} \PYG{o}{=} \PYG{k+kc}{None}
+        \PYG{k}{for} \PYG{n}{worksheet} \PYG{o+ow}{in} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{worksheets}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{rows} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{values\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}\PYG{p}{)}
+        \PYG{n}{current\PYGZus{}dates} \PYG{o}{=} \PYG{p}{[}\PYG{n}{excel\PYGZus{}date}\PYG{p}{(}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{]}
+        \PYG{n}{values} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}
+        \PYG{p}{[}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{]}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}
+        \PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{values}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{!=} \PYG{p}{(}\PYG{l+m+mi}{365}\PYG{p}{,} \PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{title}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 数据形状错误：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{values}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{title}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 存在缺失值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{dates} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{dates} \PYG{o}{=} \PYG{n}{current\PYGZus{}dates}
+        \PYG{k}{elif} \PYG{n}{current\PYGZus{}dates} \PYG{o}{!=} \PYG{n}{dates}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 2 两个工作表的日期不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{matrices}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{values}\PYG{p}{)}\PYG{p}{)}
+        \PYG{k}{finally}\PYG{p}{:}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{close}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{dates}\PYG{p}{,} \PYG{n}{matrices}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrices}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{load\PYGZus{}prediction\PYGZus{}series}\PYG{p}{(}
+        \PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{tuple}\PYG{p}{[}\PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{load\PYGZus{}workbook}\PYG{p}{(}\PYG{n}{path}\PYG{p}{,} \PYG{n}{read\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{data\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{try}\PYG{p}{:}
+        \PYG{k}{if} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{sheetnames}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{!=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电实际功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 工作表名称或顺序不匹配}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{matrices} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{n}{dates} \PYG{o}{=} \PYG{k+kc}{None}
+        \PYG{k}{for} \PYG{n}{worksheet} \PYG{o+ow}{in} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{worksheets}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{rows} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{values\PYGZus{}only}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}\PYG{p}{)}
+        \PYG{n}{current\PYGZus{}dates} \PYG{o}{=} \PYG{p}{[}\PYG{n}{excel\PYGZus{}date}\PYG{p}{(}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{]}
+        \PYG{n}{values} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}
+        \PYG{p}{[}\PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{rows}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]} \PYG{k}{if} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{]}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}
+        \PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{values}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{!=} \PYG{p}{(}\PYG{l+m+mi}{334}\PYG{p}{,} \PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 的 }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{title}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 应为 334 x 144}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 的 }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{title}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 存在缺失值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{dates} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{dates} \PYG{o}{=} \PYG{n}{current\PYGZus{}dates}
+        \PYG{k}{elif} \PYG{n}{current\PYGZus{}dates} \PYG{o}{!=} \PYG{n}{dates}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 两个工作表的日期不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{matrices}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{maximum}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{values}\PYG{p}{)}\PYG{p}{)}
+        \PYG{k}{finally}\PYG{p}{:}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{close}\PYG{p}{(}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{dates}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{!=} \PYG{n}{OUTPUT\PYGZus{}START} \PYG{o+ow}{or} \PYG{n}{dates}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{!=} \PYG{n}{OUTPUT\PYGZus{}END}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 的日期必须覆盖 2025\PYGZhy{}02\PYGZhy{}01 至 2025\PYGZhy{}12\PYGZhy{}31}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{dates}\PYG{p}{,} \PYG{n}{matrices}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrices}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{regression\PYGZus{}metrics}\PYG{p}{(}\PYG{n}{actual}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{prediction}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{dict}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}计算 R2、MAE 和 RMSE。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{actual\PYGZus{}flat} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{actual}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{prediction\PYGZus{}flat} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{prediction}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{actual\PYGZus{}flat}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{!=} \PYG{n}{prediction\PYGZus{}flat}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{实际值和预测值形状不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{actual\PYGZus{}flat}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)} \PYG{o+ow}{or} \PYG{o+ow}{not} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{prediction\PYGZus{}flat}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{评估数据中存在缺失或非有限值}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{error} \PYG{o}{=} \PYG{n}{actual\PYGZus{}flat} \PYG{o}{\PYGZhy{}} \PYG{n}{prediction\PYGZus{}flat}
+        \PYG{n}{residual\PYGZus{}sum} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{error}\PYG{o}{*}\PYG{o}{*}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}sum} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{(}\PYG{n}{actual\PYGZus{}flat} \PYG{o}{\PYGZhy{}} \PYG{n}{actual\PYGZus{}flat}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{o}{*}\PYG{o}{*} \PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{)}
+        \PYG{n}{r2} \PYG{o}{=} \PYG{l+m+mf}{1.0} \PYG{o}{\PYGZhy{}} \PYG{n}{residual\PYGZus{}sum} \PYG{o}{/} \PYG{n}{total\PYGZus{}sum} \PYG{k}{if} \PYG{n}{total\PYGZus{}sum} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0} \PYG{k}{else} \PYG{n+nb}{float}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{nan}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{return} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{R2}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{r2}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{MAE}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{(}\PYG{n}{error}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{RMSE}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{error}\PYG{o}{*}\PYG{o}{*}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{evaluate\PYGZus{}predictions}\PYG{p}{(}
+        \PYG{n}{actual\PYGZus{}dates}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}load}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}pv}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}dates}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}load}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}pv}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{dict}\PYG{p}{]}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}按照日期对齐，评估负载和光伏预测。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{actual\PYGZus{}by\PYGZus{}date} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{n}{target}\PYG{p}{:} \PYG{n}{index} \PYG{k}{for} \PYG{n}{index}\PYG{p}{,} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{actual\PYGZus{}dates}\PYG{p}{)}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{missing} \PYG{o}{=} \PYG{p}{[}\PYG{n}{target} \PYG{k}{for} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{pred\PYGZus{}dates} \PYG{k}{if} \PYG{n}{target} \PYG{o+ow}{not} \PYG{o+ow}{in} \PYG{n}{actual\PYGZus{}by\PYGZus{}date}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{missing}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{预测日期在附件 2 中不存在：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{missing}\PYG{p}{[}\PYG{p}{:}\PYG{l+m+mi}{5}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{indices} \PYG{o}{=} \PYG{p}{[}\PYG{n}{actual\PYGZus{}by\PYGZus{}date}\PYG{p}{[}\PYG{n}{target}\PYG{p}{]} \PYG{k}{for} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{pred\PYGZus{}dates}\PYG{p}{]}
+        \PYG{n}{true\PYGZus{}load} \PYG{o}{=} \PYG{n}{actual\PYGZus{}load}\PYG{p}{[}\PYG{n}{indices}\PYG{p}{]}
+        \PYG{n}{true\PYGZus{}pv} \PYG{o}{=} \PYG{n}{actual\PYGZus{}pv}\PYG{p}{[}\PYG{n}{indices}\PYG{p}{]}
+        \PYG{n}{daylight} \PYG{o}{=} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{36}\PYG{p}{,} \PYG{l+m+mi}{108}\PYG{p}{)}
+
+        \PYG{k}{return} \PYG{p}{[}
+        \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{model}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{小区负载}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{o}{*}\PYG{o}{*}\PYG{n}{regression\PYGZus{}metrics}\PYG{p}{(}\PYG{n}{true\PYGZus{}load}\PYG{p}{,} \PYG{n}{pred\PYGZus{}load}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{,}
+        \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{model}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏发电实际功率}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{o}{*}\PYG{o}{*}\PYG{n}{regression\PYGZus{}metrics}\PYG{p}{(}\PYG{n}{true\PYGZus{}pv}\PYG{p}{,} \PYG{n}{pred\PYGZus{}pv}\PYG{p}{)}\PYG{p}{\PYGZcb{}}\PYG{p}{,}
+        \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{model}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{光伏白天时段(6:00\PYGZhy{}18:00)}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+            \PYG{o}{*}\PYG{o}{*}\PYG{n}{regression\PYGZus{}metrics}\PYG{p}{(}\PYG{n}{true\PYGZus{}pv}\PYG{p}{[}\PYG{p}{:}\PYG{p}{,} \PYG{n}{daylight}\PYG{p}{]}\PYG{p}{,} \PYG{n}{pred\PYGZus{}pv}\PYG{p}{[}\PYG{p}{:}\PYG{p}{,} \PYG{n}{daylight}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}\PYG{p}{,}
+        \PYG{p}{]}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{write\PYGZus{}evaluation\PYGZus{}csv}\PYG{p}{(}\PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,} \PYG{n}{results}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{dict}\PYG{p}{]}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{path}\PYG{o}{.}\PYG{n}{parent}\PYG{o}{.}\PYG{n}{mkdir}\PYG{p}{(}\PYG{n}{parents}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{k}{with} \PYG{n}{path}\PYG{o}{.}\PYG{n}{open}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{w}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{encoding}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{utf\PYGZhy{}8\PYGZhy{}sig}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{newline}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)} \PYG{k}{as} \PYG{n}{file}\PYG{p}{:}
+        \PYG{n}{writer} \PYG{o}{=} \PYG{n}{csv}\PYG{o}{.}\PYG{n}{DictWriter}\PYG{p}{(}
+        \PYG{n}{file}\PYG{p}{,}
+        \PYG{n}{fieldnames}\PYG{o}{=}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{model}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{R2}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{MAE}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{RMSE}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{writer}\PYG{o}{.}\PYG{n}{writeheader}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{writer}\PYG{o}{.}\PYG{n}{writerows}\PYG{p}{(}\PYG{n}{results}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{print\PYGZus{}evaluation}\PYG{p}{(}\PYG{n}{results}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{dict}\PYG{p}{]}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{k}{for} \PYG{n}{result} \PYG{o+ow}{in} \PYG{n}{results}\PYG{p}{:}
+        \PYG{n+nb}{print}\PYG{p}{(}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}model\PYGZcb{}}\PYG{l+s+s2}{：R2=}\PYG{l+s+si}{\PYGZob{}R2:.6f\PYGZcb{}}\PYG{l+s+s2}{，MAE=}\PYG{l+s+si}{\PYGZob{}MAE:.4f\PYGZcb{}}\PYG{l+s+s2}{ kW，RMSE=}\PYG{l+s+si}{\PYGZob{}RMSE:.4f\PYGZcb{}}\PYG{l+s+s2}{ kW}\PYG{l+s+s2}{\PYGZdq{}}\PYG{o}{.}\PYG{n}{format}\PYG{p}{(}
+        \PYG{o}{*}\PYG{o}{*}\PYG{n}{result}
+        \PYG{p}{)}
+        \PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{fill\PYGZus{}initial\PYGZus{}missing}\PYG{p}{(}\PYG{n}{values}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{name}\PYG{p}{:} \PYG{n+nb}{str}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{:}
+        \PYG{n}{complete} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{values}\PYG{p}{)}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{valid} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{flatnonzero}\PYG{p}{(}\PYG{n}{complete}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{valid}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{name}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{没有完整预测}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{first} \PYG{o}{=} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{valid}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{complete}\PYG{p}{[}\PYG{n}{first}\PYG{p}{:}\PYG{p}{]}\PYG{o}{.}\PYG{n}{all}\PYG{p}{(}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{name}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{存在中间缺失}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{result} \PYG{o}{=} \PYG{n}{values}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{result}\PYG{p}{[}\PYG{p}{:}\PYG{n}{first}\PYG{p}{]} \PYG{o}{=} \PYG{n}{result}\PYG{p}{[}\PYG{n}{first}\PYG{p}{]}
+        \PYG{k}{return} \PYG{n}{result}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{build\PYGZus{}january\PYGZus{}forecasts}\PYG{p}{(}
+        \PYG{n}{attachment}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{tuple}\PYG{p}{[}\PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{\PYGZus{}}\PYG{p}{,} \PYG{n}{load} \PYG{o}{=} \PYG{n}{load\PYGZus{}load\PYGZus{}history}\PYG{p}{(}\PYG{n}{attachment}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{\PYGZus{}}\PYG{p}{,} \PYG{n}{pv} \PYG{o}{=} \PYG{n}{load\PYGZus{}pv\PYGZus{}history}\PYG{p}{(}\PYG{n}{attachment}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{load\PYGZus{}dates} \PYG{o}{!=} \PYG{n}{pv\PYGZus{}dates}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件 2 的负载和光伏日期不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{load\PYGZus{}lambda}\PYG{p}{,} \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{select\PYGZus{}lambda}\PYG{p}{(}\PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{load}\PYG{p}{)}
+        \PYG{n}{load\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{RollingRidgeLoadV4}\PYG{p}{(}
+        \PYG{n}{load\PYGZus{}dates}\PYG{p}{,} \PYG{n}{load}\PYG{p}{,} \PYG{n}{load\PYGZus{}lambda}
+        \PYG{p}{)}\PYG{o}{.}\PYG{n}{historical\PYGZus{}prediction}
+
+        \PYG{n}{pv\PYGZus{}original} \PYG{o}{=} \PYG{n}{original\PYGZus{}historical\PYGZus{}prediction}\PYG{p}{(}\PYG{n}{pv}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}lambda}\PYG{p}{,} \PYG{n}{pv\PYGZus{}blend}\PYG{p}{,} \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{select\PYGZus{}parameters}\PYG{p}{(}\PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pv}\PYG{p}{,} \PYG{n}{pv\PYGZus{}original}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}ridge} \PYG{o}{=} \PYG{n}{ExpandingRidgePVV4}\PYG{p}{(}\PYG{n}{pv\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pv}\PYG{p}{,} \PYG{n}{pv\PYGZus{}lambda}\PYG{p}{)}\PYG{o}{.}\PYG{n}{historical\PYGZus{}ridge}
+        \PYG{n}{pv\PYGZus{}prediction} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{full\PYGZus{}like}\PYG{p}{(}\PYG{n}{pv}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{nan}\PYG{p}{)}
+        \PYG{n}{both} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}original}\PYG{p}{)} \PYG{o}{\PYGZam{}} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}ridge}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}prediction}\PYG{p}{[}\PYG{n}{both}\PYG{p}{]} \PYG{o}{=} \PYG{p}{(}
+        \PYG{n}{pv\PYGZus{}blend} \PYG{o}{*} \PYG{n}{pv\PYGZus{}original}\PYG{p}{[}\PYG{n}{both}\PYG{p}{]} \PYG{o}{+} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{pv\PYGZus{}blend}\PYG{p}{)} \PYG{o}{*} \PYG{n}{pv\PYGZus{}ridge}\PYG{p}{[}\PYG{n}{both}\PYG{p}{]}
+        \PYG{p}{)}
+        \PYG{n}{original\PYGZus{}only} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}original}\PYG{p}{)} \PYG{o}{\PYGZam{}} \PYG{o}{\PYGZti{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}prediction}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}prediction}\PYG{p}{[}\PYG{n}{original\PYGZus{}only}\PYG{p}{]} \PYG{o}{=} \PYG{n}{pv\PYGZus{}original}\PYG{p}{[}\PYG{n}{original\PYGZus{}only}\PYG{p}{]}
+        \PYG{n}{ridge\PYGZus{}only} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}ridge}\PYG{p}{)} \PYG{o}{\PYGZam{}} \PYG{o}{\PYGZti{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{isfinite}\PYG{p}{(}\PYG{n}{pv\PYGZus{}prediction}\PYG{p}{)}
+        \PYG{n}{pv\PYGZus{}prediction}\PYG{p}{[}\PYG{n}{ridge\PYGZus{}only}\PYG{p}{]} \PYG{o}{=} \PYG{n}{pv\PYGZus{}ridge}\PYG{p}{[}\PYG{n}{ridge\PYGZus{}only}\PYG{p}{]}
+
+        \PYG{k}{return} \PYG{p}{(}
+        \PYG{n}{load\PYGZus{}dates}\PYG{p}{,}
+        \PYG{n}{fill\PYGZus{}initial\PYGZus{}missing}\PYG{p}{(}\PYG{n}{load\PYGZus{}prediction}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{1 月负载预测}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{fill\PYGZus{}initial\PYGZus{}missing}\PYG{p}{(}\PYG{n}{pv\PYGZus{}prediction}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{1 月光伏预测}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{period}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{str}\PYG{p}{:}
+        \PYG{n}{start} \PYG{o}{=} \PYG{n}{period} \PYG{o}{*} \PYG{l+m+mi}{10}
+        \PYG{n}{end} \PYG{o}{=} \PYG{p}{(}\PYG{n}{period} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{10}
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{clock}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n+nb}{str}\PYG{p}{:}
+        \PYG{n}{day}\PYG{p}{,} \PYG{n}{minute\PYGZus{}of\PYGZus{}day} \PYG{o}{=} \PYG{n+nb}{divmod}\PYG{p}{(}\PYG{n}{minutes}\PYG{p}{,} \PYG{l+m+mi}{24} \PYG{o}{*} \PYG{l+m+mi}{60}\PYG{p}{)}
+        \PYG{n}{hour}\PYG{p}{,} \PYG{n}{minute} \PYG{o}{=} \PYG{n+nb}{divmod}\PYG{p}{(}\PYG{n}{minute\PYGZus{}of\PYGZus{}day}\PYG{p}{,} \PYG{l+m+mi}{60}\PYG{p}{)}
+        \PYG{n}{suffix} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{+1}\PYG{l+s+s2}{\PYGZdq{}} \PYG{k}{if} \PYG{n}{day} \PYG{k}{else} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{k}{return} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{hour}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{:}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{minute}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{suffix}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{k}{return} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{clock}\PYG{p}{(}\PYG{n}{end}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{solve\PYGZus{}plan\PYGZus{}day}\PYG{p}{(}
+        \PYG{n}{net\PYGZus{}plan\PYGZus{}kwh}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{price}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{storage\PYGZus{}initial}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{DailyPlan}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}固定计划净负荷下的日 MILP，保证日初日末储电量相同。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{n} \PYG{o}{=} \PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}
+        \PYG{n}{blocks} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{r}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{5} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{,}
+            \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{n+nb}{slice}\PYG{p}{(}\PYG{l+m+mi}{5} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{6} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{n}{size} \PYG{o}{=} \PYG{l+m+mi}{6} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{l+m+mi}{1}
+
+        \PYG{n}{objective} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{)}
+        \PYG{n}{objective}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{price}
+        \PYG{n}{integrality} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{int}\PYG{p}{)}
+        \PYG{n}{integrality}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+        \PYG{n}{lower} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{size}\PYG{p}{)}
+        \PYG{n}{upper} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{full}\PYG{p}{(}\PYG{n}{size}\PYG{p}{,} \PYG{n}{np}\PYG{o}{.}\PYG{n}{inf}\PYG{p}{)}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{POWER\PYGZus{}LIMIT}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{POWER\PYGZus{}LIMIT}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{SOC\PYGZus{}MIN}
+        \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{n}{SOC\PYGZus{}MAX}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start}\PYG{p}{]} \PYG{o}{=} \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start}\PYG{p}{]} \PYG{o}{=} \PYG{n}{storage\PYGZus{}initial}
+        \PYG{n}{lower}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{stop} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{=} \PYG{n}{upper}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{stop} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{=} \PYG{n}{storage\PYGZus{}initial}
+
+        \PYG{n}{matrix} \PYG{o}{=} \PYG{n}{lil\PYGZus{}matrix}\PYG{p}{(}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{n}{size}\PYG{p}{)}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{)}
+        \PYG{n}{row\PYGZus{}lower} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{full}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{inf}\PYG{p}{)}
+        \PYG{n}{row\PYGZus{}upper} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{l+m+mi}{4} \PYG{o}{*} \PYG{n}{n}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{n}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{g} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{c} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{d} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{s} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{r} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{r}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{z} \PYG{o}{=} \PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{z}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{start} \PYG{o}{+} \PYG{n}{t}
+
+        \PYG{c+c1}{\PYGZsh{} g\PYGZus{}t + d\PYGZus{}t \PYGZhy{} c\PYGZus{}t \PYGZhy{} spill\PYGZus{}t = net\PYGZus{}plan\PYGZus{}t}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{g}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{t}\PYG{p}{,} \PYG{n}{r}\PYG{p}{]} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}
+        \PYG{n}{row\PYGZus{}lower}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{net\PYGZus{}plan\PYGZus{}kwh}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}
+
+        \PYG{n}{row} \PYG{o}{=} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{s} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{s}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{n}{row}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{ETA\PYGZus{}C}\PYG{p}{,} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{ETA\PYGZus{}D}
+        \PYG{n}{row\PYGZus{}lower}\PYG{p}{[}\PYG{n}{row}\PYG{p}{]} \PYG{o}{=} \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{n}{row}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{0}
+
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{c}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{z}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{n}{POWER\PYGZus{}LIMIT}
+        \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{d}\PYG{p}{]}\PYG{p}{,} \PYG{n}{matrix}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{,} \PYG{n}{z}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{POWER\PYGZus{}LIMIT}
+        \PYG{n}{row\PYGZus{}upper}\PYG{p}{[}\PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{n} \PYG{o}{+} \PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{POWER\PYGZus{}LIMIT}
+
+        \PYG{n}{result} \PYG{o}{=} \PYG{n}{milp}\PYG{p}{(}
+        \PYG{n}{objective}\PYG{p}{,}
+        \PYG{n}{integrality}\PYG{o}{=}\PYG{n}{integrality}\PYG{p}{,}
+        \PYG{n}{bounds}\PYG{o}{=}\PYG{n}{Bounds}\PYG{p}{(}\PYG{n}{lower}\PYG{p}{,} \PYG{n}{upper}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{constraints}\PYG{o}{=}\PYG{n}{LinearConstraint}\PYG{p}{(}\PYG{n}{matrix}\PYG{o}{.}\PYG{n}{tocsc}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n}{row\PYGZus{}lower}\PYG{p}{,} \PYG{n}{row\PYGZus{}upper}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{options}\PYG{o}{=}\PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{mip\PYGZus{}rel\PYGZus{}gap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:} \PYG{l+m+mf}{0.0}\PYG{p}{\PYGZcb{}}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{result}\PYG{o}{.}\PYG{n}{x} \PYG{o+ow}{is} \PYG{k+kc}{None} \PYG{o+ow}{or} \PYG{n}{result}\PYG{o}{.}\PYG{n}{status} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{RuntimeError}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{第二问单日 MILP 求解失败：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{result}\PYG{o}{.}\PYG{n}{message}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{k}{return} \PYG{n}{DailyPlan}\PYG{p}{(}
+        \PYG{n}{purchase\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{g}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{charge\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{c}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{discharge\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{d}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{result}\PYG{o}{.}\PYG{n}{x}\PYG{p}{[}\PYG{n}{blocks}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{S}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]}\PYG{p}{,}
+        \PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{simulate\PYGZus{}actual\PYGZus{}day}\PYG{p}{(}
+        \PYG{n}{planned\PYGZus{}purchase}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}load\PYGZus{}kw}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}pv\PYGZus{}kw}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{storage\PYGZus{}initial}\PYG{p}{:} \PYG{n+nb}{float}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{n}{ActualResult}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}按实际供需执行电池：富余优先充电，缺电优先放电。\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{charge} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}
+        \PYG{n}{discharge} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}
+        \PYG{n}{emergency} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}
+        \PYG{n}{spill} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}
+        \PYG{n}{storage\PYGZus{}end} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}
+        \PYG{n}{storage} \PYG{o}{=} \PYG{n}{storage\PYGZus{}initial}
+
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{load} \PYG{o}{=} \PYG{n}{actual\PYGZus{}load\PYGZus{}kw}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{pv} \PYG{o}{=} \PYG{n}{actual\PYGZus{}pv\PYGZus{}kw}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{balance} \PYG{o}{=} \PYG{n}{planned\PYGZus{}purchase}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{+} \PYG{n}{pv} \PYG{o}{\PYGZhy{}} \PYG{n}{load}
+
+        \PYG{k}{if} \PYG{n}{balance} \PYG{o}{\PYGZgt{}}\PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{n}{charge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n+nb}{min}\PYG{p}{(}
+        \PYG{n}{balance}\PYG{p}{,}
+        \PYG{n}{POWER\PYGZus{}LIMIT}\PYG{p}{,}
+        \PYG{p}{(}\PYG{n}{SOC\PYGZus{}MAX} \PYG{o}{\PYGZhy{}} \PYG{n}{storage}\PYG{p}{)} \PYG{o}{/} \PYG{n}{ETA\PYGZus{}C}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{spill}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{balance} \PYG{o}{\PYGZhy{}} \PYG{n}{charge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{else}\PYG{p}{:}
+        \PYG{n}{max\PYGZus{}discharge} \PYG{o}{=} \PYG{n+nb}{min}\PYG{p}{(}
+        \PYG{o}{\PYGZhy{}}\PYG{n}{balance}\PYG{p}{,}
+        \PYG{n}{POWER\PYGZus{}LIMIT}\PYG{p}{,}
+        \PYG{n}{ETA\PYGZus{}D} \PYG{o}{*} \PYG{p}{(}\PYG{n}{storage} \PYG{o}{\PYGZhy{}} \PYG{n}{SOC\PYGZus{}MIN}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{discharge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{max\PYGZus{}discharge}\PYG{p}{)}
+        \PYG{n}{emergency}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n+nb}{max}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{n}{balance} \PYG{o}{\PYGZhy{}} \PYG{n}{discharge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{p}{)}
+
+        \PYG{n}{storage} \PYG{o}{+}\PYG{o}{=} \PYG{n}{ETA\PYGZus{}C} \PYG{o}{*} \PYG{n}{charge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{discharge}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{/} \PYG{n}{ETA\PYGZus{}D}
+        \PYG{n}{storage} \PYG{o}{=} \PYG{n+nb}{min}\PYG{p}{(}\PYG{n}{SOC\PYGZus{}MAX}\PYG{p}{,} \PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{SOC\PYGZus{}MIN}\PYG{p}{,} \PYG{n}{storage}\PYG{p}{)}\PYG{p}{)}
+        \PYG{n}{storage\PYGZus{}end}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{o}{=} \PYG{n}{storage}
+
+        \PYG{n}{runs}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n+nb}{tuple}\PYG{p}{[}\PYG{n+nb}{str}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{]}\PYG{p}{]} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{n}{active} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{flatnonzero}\PYG{p}{(}\PYG{n}{emergency} \PYG{o}{\PYGZgt{}} \PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{active}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{start} \PYG{o}{=} \PYG{n}{previous} \PYG{o}{=} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{active}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{value} \PYG{o+ow}{in} \PYG{n}{active}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{period} \PYG{o}{=} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{value}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{period} \PYG{o}{!=} \PYG{n}{previous} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{:}
+        \PYG{n}{runs}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{previous}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{emergency}\PYG{p}{[}\PYG{n}{start}\PYG{p}{:}\PYG{n}{previous} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{p}{)}
+        \PYG{n}{start} \PYG{o}{=} \PYG{n}{period}
+        \PYG{n}{previous} \PYG{o}{=} \PYG{n}{period}
+        \PYG{n}{runs}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{previous}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{emergency}\PYG{p}{[}\PYG{n}{start}\PYG{p}{:}\PYG{n}{previous} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{p}{)}
+
+        \PYG{k}{return} \PYG{n}{ActualResult}\PYG{p}{(}
+        \PYG{n}{storage\PYGZus{}initial\PYGZus{}kwh}\PYG{o}{=}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{storage\PYGZus{}initial}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{charge\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{charge}\PYG{p}{,}
+        \PYG{n}{discharge\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{discharge}\PYG{p}{,}
+        \PYG{n}{emergency\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{emergency}\PYG{p}{,}
+        \PYG{n}{spill\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{spill}\PYG{p}{,}
+        \PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{o}{=}\PYG{n}{storage\PYGZus{}end}\PYG{p}{,}
+        \PYG{n}{emergency\PYGZus{}runs}\PYG{o}{=}\PYG{n}{runs}\PYG{p}{,}
+        \PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{style\PYGZus{}sheet}\PYG{p}{(}\PYG{n}{worksheet}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{header\PYGZus{}fill} \PYG{o}{=} \PYG{n}{PatternFill}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{solid}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{fgColor}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{D9EAF7}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{cell} \PYG{o+ow}{in} \PYG{n}{worksheet}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{fill} \PYG{o}{=} \PYG{n}{header\PYGZus{}fill}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{font} \PYG{o}{=} \PYG{n}{Font}\PYG{p}{(}\PYG{n}{name}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{宋体}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{size}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{n}{bold}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{alignment} \PYG{o}{=} \PYG{n}{Alignment}\PYG{p}{(}\PYG{n}{horizontal}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{center}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{vertical}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{center}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{freeze\PYGZus{}panes} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{B2}\PYG{l+s+s2}{\PYGZdq{}}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{write\PYGZus{}result2}\PYG{p}{(}
+        \PYG{n}{path}\PYG{p}{:} \PYG{n}{Path}\PYG{p}{,}
+        \PYG{n}{output\PYGZus{}dates}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{price}\PYG{p}{:} \PYG{n}{np}\PYG{o}{.}\PYG{n}{ndarray}\PYG{p}{,}
+        \PYG{n}{plans}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{DailyPlan}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{actuals}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{ActualResult}\PYG{p}{]}\PYG{p}{,}
+        \PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{workbook} \PYG{o}{=} \PYG{n}{openpyxl}\PYG{o}{.}\PYG{n}{Workbook}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{remove}\PYG{p}{(}\PYG{n}{workbook}\PYG{o}{.}\PYG{n}{active}\PYG{p}{)}
+
+        \PYG{n}{plan\PYGZus{}sheet} \PYG{o}{=} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{create\PYGZus{}sheet}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{计划购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{plan\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日期}\PYG{l+s+se}{\PYGZbs{}\PYGZbs{}}\PYG{l+s+s2}{时间}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{o}{*}\PYG{p}{[}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{t}\PYG{p}{)} \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{PERIODS\PYGZus{}PER\PYGZus{}DAY}\PYG{p}{)}\PYG{p}{]}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{全天购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{全天购电费}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+        \PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{target}\PYG{p}{,} \PYG{n}{plan} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{output\PYGZus{}dates}\PYG{p}{,} \PYG{n}{plans}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{plan\PYGZus{}cost} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{price} \PYG{o}{@} \PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{p}{)}
+        \PYG{n}{plan\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{[}\PYG{n}{datetime}\PYG{o}{.}\PYG{n}{combine}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{min}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{o}{*}\PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{(}\PYG{p}{)}\PYG{p}{,} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{n}{plan\PYGZus{}cost}\PYG{p}{]}
+        \PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{row} \PYG{o+ow}{in} \PYG{n}{plan\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{iter\PYGZus{}rows}\PYG{p}{(}\PYG{n}{min\PYGZus{}row}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{number\PYGZus{}format} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{yyyy\PYGZhy{}mm\PYGZhy{}dd}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{k}{for} \PYG{n}{cell} \PYG{o+ow}{in} \PYG{n}{row}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{p}{]}\PYG{p}{:}
+        \PYG{n}{cell}\PYG{o}{.}\PYG{n}{number\PYGZus{}format} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{0.0000}\PYG{l+s+s2}{\PYGZdq{}}
+
+        \PYG{n}{battery\PYGZus{}sheet} \PYG{o}{=} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{create\PYGZus{}sheet}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充放电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日期}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时间段}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{充电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{放电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{时刻}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{储电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{target}\PYG{p}{,} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{output\PYGZus{}dates}\PYG{p}{,} \PYG{n}{actuals}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{for} \PYG{n}{block} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{6}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{lo}\PYG{p}{,} \PYG{n}{hi} \PYG{o}{=} \PYG{n}{block} \PYG{o}{*} \PYG{l+m+mi}{24}\PYG{p}{,} \PYG{p}{(}\PYG{n}{block} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{24}
+        \PYG{n}{battery\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{[}
+        \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{combine}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{min}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{lo}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZhy{}}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{interval\PYGZus{}label}\PYG{p}{(}\PYG{n}{hi}\PYG{+w}{ }\PYG{o}{\PYGZhy{}}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+s1}{\PYGZhy{}}\PYG{l+s+s1}{\PYGZsq{}}\PYG{p}{)}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{charge\PYGZus{}kwh}\PYG{p}{[}\PYG{n}{lo}\PYG{p}{:}\PYG{n}{hi}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{discharge\PYGZus{}kwh}\PYG{p}{[}\PYG{n}{lo}\PYG{p}{:}\PYG{n}{hi}\PYG{p}{]}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{0:00}\PYG{l+s+s2}{\PYGZdq{}} \PYG{k}{if} \PYG{n}{block} \PYG{o}{==} \PYG{l+m+mi}{0} \PYG{k}{else} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{24:00}\PYG{l+s+s2}{\PYGZdq{}} \PYG{k}{if} \PYG{n}{block} \PYG{o}{==} \PYG{l+m+mi}{1} \PYG{k}{else} \PYG{k+kc}{None}\PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{(}
+        \PYG{n+nb}{float}\PYG{p}{(}
+        \PYG{n}{actual}\PYG{o}{.}\PYG{n}{storage\PYGZus{}initial\PYGZus{}kwh}
+        \PYG{k}{if} \PYG{n}{block} \PYG{o}{==} \PYG{l+m+mi}{0}
+        \PYG{k}{else} \PYG{n}{actual}\PYG{o}{.}\PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}
+        \PYG{p}{)}
+        \PYG{k}{if} \PYG{n}{block} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{k}{else} \PYG{k+kc}{None}
+        \PYG{p}{)}\PYG{p}{,}
+        \PYG{p}{]}
+        \PYG{p}{)}
+
+        \PYG{n}{emergency\PYGZus{}sheet} \PYG{o}{=} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{create\PYGZus{}sheet}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{紧急购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{emergency\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{日期}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{购电时间段}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{购电量}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{for} \PYG{n}{target}\PYG{p}{,} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{output\PYGZus{}dates}\PYG{p}{,} \PYG{n}{actuals}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{actual}\PYG{o}{.}\PYG{n}{emergency\PYGZus{}runs}\PYG{p}{:}
+        \PYG{n}{emergency\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{p}{[}\PYG{n}{datetime}\PYG{o}{.}\PYG{n}{combine}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{min}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)}\PYG{p}{,} \PYG{k+kc}{None}\PYG{p}{,} \PYG{k+kc}{None}\PYG{p}{]}\PYG{p}{)}
+        \PYG{k}{continue}
+        \PYG{k}{for} \PYG{n}{index}\PYG{p}{,} \PYG{p}{(}\PYG{n}{interval}\PYG{p}{,} \PYG{n}{amount}\PYG{p}{)} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{emergency\PYGZus{}runs}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{emergency\PYGZus{}sheet}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}
+        \PYG{p}{[}
+        \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{combine}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{min}\PYG{o}{.}\PYG{n}{time}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{k}{if} \PYG{n}{index} \PYG{o}{==} \PYG{l+m+mi}{0} \PYG{k}{else} \PYG{k+kc}{None}\PYG{p}{,}
+        \PYG{n}{interval}\PYG{p}{,}
+        \PYG{n}{amount}\PYG{p}{,}
+        \PYG{p}{]}
+        \PYG{p}{)}
+
+        \PYG{k}{for} \PYG{n}{worksheet} \PYG{o+ow}{in} \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{worksheets}\PYG{p}{:}
+        \PYG{n}{style\PYGZus{}sheet}\PYG{p}{(}\PYG{n}{worksheet}\PYG{p}{)}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{column\PYGZus{}dimensions}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{A}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{width} \PYG{o}{=} \PYG{l+m+mi}{13}
+        \PYG{k}{for} \PYG{n}{column} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{max\PYGZus{}column} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}\PYG{p}{:}
+        \PYG{n}{worksheet}\PYG{o}{.}\PYG{n}{column\PYGZus{}dimensions}\PYG{p}{[}\PYG{n}{get\PYGZus{}column\PYGZus{}letter}\PYG{p}{(}\PYG{n}{column}\PYG{p}{)}\PYG{p}{]}\PYG{o}{.}\PYG{n}{width} \PYG{o}{=} \PYG{l+m+mi}{11}
+
+        \PYG{n}{path}\PYG{o}{.}\PYG{n}{parent}\PYG{o}{.}\PYG{n}{mkdir}\PYG{p}{(}\PYG{n}{parents}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        \PYG{n}{workbook}\PYG{o}{.}\PYG{n}{save}\PYG{p}{(}\PYG{n}{path}\PYG{p}{)}
+
+
+        \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{main}\PYG{p}{(}\PYG{p}{)} \PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{parser} \PYG{o}{=} \PYG{n}{argparse}\PYG{o}{.}\PYG{n}{ArgumentParser}\PYG{p}{(}\PYG{n}{description}\PYG{o}{=}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}doc\PYGZus{}\PYGZus{}}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}pred}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}output}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{)}
+        \PYG{n}{parser}\PYG{o}{.}\PYG{n}{add\PYGZus{}argument}\PYG{p}{(}
+        \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}evaluation\PYGZhy{}output}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n+nb}{type}\PYG{o}{=}\PYG{n}{Path}\PYG{p}{,}
+        \PYG{n}{default}\PYG{o}{=}\PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{model\PYGZus{}R2\PYGZus{}evaluation.csv}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{args} \PYG{o}{=} \PYG{n}{parser}\PYG{o}{.}\PYG{n}{parse\PYGZus{}args}\PYG{p}{(}\PYG{p}{)}
+
+        \PYG{n}{pred\PYGZus{}path} \PYG{o}{=} \PYG{n}{args}\PYG{o}{.}\PYG{n}{pred} \PYG{o+ow}{or} \PYG{p}{(}\PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prediction}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prediction.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{output\PYGZus{}path} \PYG{o}{=} \PYG{n}{args}\PYG{o}{.}\PYG{n}{output} \PYG{o+ow}{or} \PYG{p}{(}\PYG{n}{RESULT\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{result2.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{price} \PYG{o}{=} \PYG{n}{load\PYGZus{}price}\PYG{p}{(}\PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件1.xlsx}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{actual\PYGZus{}dates}\PYG{p}{,} \PYG{n}{actual\PYGZus{}load}\PYG{p}{,} \PYG{n}{actual\PYGZus{}pv} \PYG{o}{=} \PYG{n}{load\PYGZus{}actual\PYGZus{}series}\PYG{p}{(}
+        \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件2.xlsx}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{p}{)}
+        \PYG{n}{pred\PYGZus{}dates}\PYG{p}{,} \PYG{n}{pred\PYGZus{}load}\PYG{p}{,} \PYG{n}{pred\PYGZus{}pv} \PYG{o}{=} \PYG{n}{load\PYGZus{}prediction\PYGZus{}series}\PYG{p}{(}\PYG{n}{pred\PYGZus{}path}\PYG{p}{)}
+
+        \PYG{n}{actual\PYGZus{}by\PYGZus{}date} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{n}{target}\PYG{p}{:} \PYG{n}{index} \PYG{k}{for} \PYG{n}{index}\PYG{p}{,} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{actual\PYGZus{}dates}\PYG{p}{)}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{k}{if} \PYG{n+nb}{any}\PYG{p}{(}\PYG{n}{target} \PYG{o+ow}{not} \PYG{o+ow}{in} \PYG{n}{actual\PYGZus{}by\PYGZus{}date} \PYG{k}{for} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{pred\PYGZus{}dates}\PYG{p}{)}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{pred.xlsx 中存在附件 2 没有的日期}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{evaluation} \PYG{o}{=} \PYG{n}{evaluate\PYGZus{}predictions}\PYG{p}{(}
+        \PYG{n}{actual\PYGZus{}dates}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}load}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}pv}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}dates}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}load}\PYG{p}{,}
+        \PYG{n}{pred\PYGZus{}pv}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{write\PYGZus{}evaluation\PYGZus{}csv}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{evaluation\PYGZus{}output}\PYG{p}{,} \PYG{n}{evaluation}\PYG{p}{)}
+
+        \PYG{n}{start\PYGZus{}time} \PYG{o}{=} \PYG{n}{perf\PYGZus{}counter}\PYG{p}{(}\PYG{p}{)}
+        \PYG{n}{jan\PYGZus{}dates}\PYG{p}{,} \PYG{n}{jan\PYGZus{}load\PYGZus{}pred}\PYG{p}{,} \PYG{n}{jan\PYGZus{}pv\PYGZus{}pred} \PYG{o}{=} \PYG{n}{build\PYGZus{}january\PYGZus{}forecasts}\PYG{p}{(}
+        \PYG{n}{APPENDIX\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{附件2.xlsx}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{p}{)}
+        \PYG{n}{jan\PYGZus{}actual\PYGZus{}indices} \PYG{o}{=} \PYG{p}{[}\PYG{n}{actual\PYGZus{}by\PYGZus{}date}\PYG{p}{[}\PYG{n}{target}\PYG{p}{]} \PYG{k}{for} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{jan\PYGZus{}dates}\PYG{p}{]}
+        \PYG{n}{jan\PYGZus{}actual\PYGZus{}net} \PYG{o}{=} \PYG{p}{(}
+        \PYG{n}{actual\PYGZus{}load}\PYG{p}{[}\PYG{n}{jan\PYGZus{}actual\PYGZus{}indices}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{actual\PYGZus{}pv}\PYG{p}{[}\PYG{n}{jan\PYGZus{}actual\PYGZus{}indices}\PYG{p}{]}
+        \PYG{p}{)} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{jan\PYGZus{}pred\PYGZus{}net} \PYG{o}{=} \PYG{p}{(}\PYG{n}{jan\PYGZus{}load\PYGZus{}pred} \PYG{o}{\PYGZhy{}} \PYG{n}{jan\PYGZus{}pv\PYGZus{}pred}\PYG{p}{)} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{residual\PYGZus{}history} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{jan\PYGZus{}actual\PYGZus{}net} \PYG{o}{\PYGZhy{}} \PYG{n}{jan\PYGZus{}pred\PYGZus{}net}\PYG{p}{)}
+
+        \PYG{n}{storage} \PYG{o}{=} \PYG{n}{SOC\PYGZus{}INITIAL}
+        \PYG{n}{output\PYGZus{}dates}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{date}\PYG{p}{]} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{n}{plans}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{DailyPlan}\PYG{p}{]} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+        \PYG{n}{actuals}\PYG{p}{:} \PYG{n+nb}{list}\PYG{p}{[}\PYG{n}{ActualResult}\PYG{p}{]} \PYG{o}{=} \PYG{p}{[}\PYG{p}{]}
+
+        \PYG{k}{for} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{actual\PYGZus{}dates}\PYG{p}{:}
+        \PYG{n}{actual\PYGZus{}index} \PYG{o}{=} \PYG{n}{actual\PYGZus{}by\PYGZus{}date}\PYG{p}{[}\PYG{n}{target}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{target} \PYG{o+ow}{in} \PYG{n}{jan\PYGZus{}dates}\PYG{p}{:}
+        \PYG{n}{pred\PYGZus{}index} \PYG{o}{=} \PYG{n}{jan\PYGZus{}dates}\PYG{o}{.}\PYG{n}{index}\PYG{p}{(}\PYG{n}{target}\PYG{p}{)}
+        \PYG{n}{forecast\PYGZus{}net} \PYG{o}{=} \PYG{p}{(}\PYG{n}{jan\PYGZus{}load\PYGZus{}pred}\PYG{p}{[}\PYG{n}{pred\PYGZus{}index}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{jan\PYGZus{}pv\PYGZus{}pred}\PYG{p}{[}\PYG{n}{pred\PYGZus{}index}\PYG{p}{]}\PYG{p}{)} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{k}{elif} \PYG{n}{OUTPUT\PYGZus{}START} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{target} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{OUTPUT\PYGZus{}END}\PYG{p}{:}
+        \PYG{n}{pred\PYGZus{}index} \PYG{o}{=} \PYG{n}{pred\PYGZus{}dates}\PYG{o}{.}\PYG{n}{index}\PYG{p}{(}\PYG{n}{target}\PYG{p}{)}
+        \PYG{n}{forecast\PYGZus{}net} \PYG{o}{=} \PYG{p}{(}\PYG{n}{pred\PYGZus{}load}\PYG{p}{[}\PYG{n}{pred\PYGZus{}index}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{pred\PYGZus{}pv}\PYG{p}{[}\PYG{n}{pred\PYGZus{}index}\PYG{p}{]}\PYG{p}{)} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{k}{else}\PYG{p}{:}
+        \PYG{k}{continue}
+
+        \PYG{n}{recent\PYGZus{}residuals} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}
+        \PYG{n}{residual\PYGZus{}history}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{n}{RESIDUAL\PYGZus{}WINDOW\PYGZus{}DAYS}\PYG{p}{:}\PYG{p}{]}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{float}
+        \PYG{p}{)}
+        \PYG{n}{risk\PYGZus{}margin} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{quantile}\PYG{p}{(}
+        \PYG{n}{recent\PYGZus{}residuals}\PYG{p}{,} \PYG{n}{RISK\PYGZus{}QUANTILE}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{method}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{linear}\PYG{l+s+s2}{\PYGZdq{}}
+        \PYG{p}{)}
+        \PYG{n}{net\PYGZus{}plan} \PYG{o}{=} \PYG{n}{forecast\PYGZus{}net} \PYG{o}{+} \PYG{n}{risk\PYGZus{}margin}
+        \PYG{n}{plan} \PYG{o}{=} \PYG{n}{solve\PYGZus{}plan\PYGZus{}day}\PYG{p}{(}\PYG{n}{net\PYGZus{}plan}\PYG{p}{,} \PYG{n}{price}\PYG{p}{,} \PYG{n}{storage}\PYG{p}{)}
+        \PYG{n}{actual} \PYG{o}{=} \PYG{n}{simulate\PYGZus{}actual\PYGZus{}day}\PYG{p}{(}
+        \PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}load}\PYG{p}{[}\PYG{n}{actual\PYGZus{}index}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{actual\PYGZus{}pv}\PYG{p}{[}\PYG{n}{actual\PYGZus{}index}\PYG{p}{]}\PYG{p}{,}
+        \PYG{n}{storage}\PYG{p}{,}
+        \PYG{p}{)}
+        \PYG{n}{storage} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{storage\PYGZus{}end\PYGZus{}kwh}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{p}{)}
+
+        \PYG{n}{actual\PYGZus{}net\PYGZus{}today} \PYG{o}{=} \PYG{p}{(}
+        \PYG{n}{actual\PYGZus{}load}\PYG{p}{[}\PYG{n}{actual\PYGZus{}index}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{actual\PYGZus{}pv}\PYG{p}{[}\PYG{n}{actual\PYGZus{}index}\PYG{p}{]}
+        \PYG{p}{)} \PYG{o}{*} \PYG{n}{DT}
+        \PYG{n}{residual\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{actual\PYGZus{}net\PYGZus{}today} \PYG{o}{\PYGZhy{}} \PYG{n}{forecast\PYGZus{}net}\PYG{p}{)}
+
+        \PYG{k}{if} \PYG{n}{OUTPUT\PYGZus{}START} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{target} \PYG{o}{\PYGZlt{}}\PYG{o}{=} \PYG{n}{OUTPUT\PYGZus{}END}\PYG{p}{:}
+        \PYG{n}{output\PYGZus{}dates}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{target}\PYG{p}{)}
+        \PYG{n}{plans}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{plan}\PYG{p}{)}
+        \PYG{n}{actuals}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{actual}\PYG{p}{)}
+
+        \PYG{k}{if} \PYG{n}{output\PYGZus{}dates} \PYG{o}{!=} \PYG{n}{pred\PYGZus{}dates}\PYG{p}{:}
+        \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{输出日期与 pred.xlsx 日期不一致}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{n}{write\PYGZus{}result2}\PYG{p}{(}\PYG{n}{output\PYGZus{}path}\PYG{p}{,} \PYG{n}{output\PYGZus{}dates}\PYG{p}{,} \PYG{n}{price}\PYG{p}{,} \PYG{n}{plans}\PYG{p}{,} \PYG{n}{actuals}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}plan\PYGZus{}kwh} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{k}{for} \PYG{n}{plan} \PYG{o+ow}{in} \PYG{n}{plans}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}plan\PYGZus{}cost} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{price} \PYG{o}{@} \PYG{n}{plan}\PYG{o}{.}\PYG{n}{purchase\PYGZus{}kwh}\PYG{p}{)} \PYG{k}{for} \PYG{n}{plan} \PYG{o+ow}{in} \PYG{n}{plans}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}emergency} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{emergency\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{k}{for} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n}{actuals}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}charge} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{charge\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{k}{for} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n}{actuals}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}discharge} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{actual}\PYG{o}{.}\PYG{n}{discharge\PYGZus{}kwh}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{p}{)}\PYG{p}{)} \PYG{k}{for} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n}{actuals}\PYG{p}{)}
+        \PYG{n}{total\PYGZus{}emergency\PYGZus{}cost} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}
+        \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{price} \PYG{o}{@} \PYG{n}{actual}\PYG{o}{.}\PYG{n}{emergency\PYGZus{}kwh}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{5} \PYG{k}{for} \PYG{n}{actual} \PYG{o+ow}{in} \PYG{n}{actuals}
+        \PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{求解日期：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dates}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 至 }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dates}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{计划购电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}plan\PYGZus{}kwh}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{计划购电费：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}plan\PYGZus{}cost}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 元}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{实际充电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}charge}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{实际放电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}discharge}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{紧急购电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}emergency}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{紧急购电费：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}emergency\PYGZus{}cost}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 元}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{总费用：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}plan\PYGZus{}cost}\PYG{+w}{ }\PYG{o}{+}\PYG{+w}{ }\PYG{n}{total\PYGZus{}emergency\PYGZus{}cost}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 元}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{期末储电量：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{storage}\PYG{l+s+si}{:}\PYG{l+s+s2}{.6f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ kWh}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{总耗时：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{perf\PYGZus{}counter}\PYG{p}{(}\PYG{p}{)}\PYG{+w}{ }\PYG{o}{\PYGZhy{}}\PYG{+w}{ }\PYG{n}{start\PYGZus{}time}\PYG{l+s+si}{:}\PYG{l+s+s2}{.3f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ 秒}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{结果已保存：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}path}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{预测评估已保存：}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{args}\PYG{o}{.}\PYG{n}{evaluation\PYGZus{}output}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{print\PYGZus{}evaluation}\PYG{p}{(}\PYG{n}{evaluation}\PYG{p}{)}
+
+
+        \PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{:}
+        \PYG{n}{main}\PYG{p}{(}\PYG{p}{)}
+
+\end{MintedVerbatim}

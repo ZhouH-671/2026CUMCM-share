@@ -1,0 +1,10 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem04\prediction\prediction.py
+附件目录：E:\My\2026CUMCM-share\release\附件
+附件4：365 天 x 144 时段，日均价 0.7662 元/kWh
+附件1 基准形状：均值 0.7662 元/kWh
+评估区间：2025-02-01 ~ 2025-12-31（334 天），滚动窗口 K = 7
+预测精度：MAE 0.0939  RMSE 0.1207 元/kWh
+拟合度　：R²(逐时段) 0.8709   R²(日均值) 0.2317
+预测电价已保存：E:\My\2026CUMCM-share\release\result\problem04\prediction\pred_price_rolling.xlsx（单表「预测电价」，334 行 x 145 列）
+
+进程已结束，退出代码为 0

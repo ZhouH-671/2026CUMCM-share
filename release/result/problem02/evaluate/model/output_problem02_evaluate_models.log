@@ -1,0 +1,8 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem02\evaluate\evaluate_models.py 
+负载1月选定参数：lambda=100.0, scores={0.1: 125.40755122558159, 1.0: 124.86257124923965, 10.0: 124.34490723172215, 100.0: 123.74760116259}
+光伏1月选定参数：lambda=1.0, blend=0.4
+指标表：E:\My\2026CUMCM-share\release\result\problem02\evaluate\model\model_evaluation_metrics.csv
+负载图：E:\My\2026CUMCM-share\release\result\problem02\evaluate\model\load_model_evaluation.svg
+光伏图：E:\My\2026CUMCM-share\release\result\problem02\evaluate\model\pv_model_evaluation.svg
+
+进程已结束，退出代码为 0

@@ -1,0 +1,15 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem03\demonstrate.py
+开始第三问调整节点对比实验……
+完成 0+12: 计划=20.521036 GWh, 紧急=19.836442 万kWh, 总费用=1412.1957 万元
+完成 0+6: 计划=20.523107 GWh, 紧急=13.613671 万kWh, 总费用=1399.7037 万元
+完成 0+12+18: 计划=20.506698 GWh, 紧急=13.394331 万kWh, 总费用=1382.7591 万元
+完成 0+6+18: 计划=20.507206 GWh, 紧急=4.749541 万kWh, 总费用=1358.9207 万元
+完成 0+6+12: 计划=20.520811 GWh, 紧急=10.762275 万kWh, 总费用=1383.0244 万元
+完成 0+6+12+18: 计划=20.506846 GWh, 紧急=4.783698 万kWh, 总费用=1355.7780 万元
+汇总 CSV：E:\My\2026CUMCM-share\release\result\problem03\demonstrate\question3_expend_summary.csv
+汇总 Excel：E:\My\2026CUMCM-share\release\result\problem03\demonstrate\question3_expend_comparison.xlsx
+绝对指标折线图：E:\My\2026CUMCM-share\release\result\problem03\demonstrate\question3_expend_comparison.svg
+相对变化折线图：E:\My\2026CUMCM-share\release\result\problem03\demonstrate\question3_expend_relative.svg
+总耗时：115.46 秒
+
+进程已结束，退出代码为 0

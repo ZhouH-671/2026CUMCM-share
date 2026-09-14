@@ -1,0 +1,18 @@
+E:\My\2026CUMCM-share\release\.venv\Scripts\python.exe E:\My\2026CUMCM-share\release\src\problem02\problem.py
+求解日期：2025-02-01 至 2025-12-31
+计划购电量：22046434.834858 kWh
+计划购电费：13454464.390255 元
+实际充电量：6734511.639971 kWh
+实际放电量：5455069.040090 kWh
+紧急购电量：126347.963398 kWh
+紧急购电费：769998.124404 元
+总费用：14224462.514658 元
+期末储电量：10672.653652 kWh
+总耗时：38.651 秒
+结果已保存：E:\My\2026CUMCM-share\release\result\problem02\result2.xlsx
+预测评估已保存：E:\My\2026CUMCM-share\release\result\problem02\model_R2_evaluation.csv
+小区负载：R2=0.974536，MAE=166.4431 kW，RMSE=224.6384 kW
+光伏发电实际功率：R2=0.989860，MAE=154.7734 kW，RMSE=301.7602 kW
+光伏白天时段(6:00-18:00)：R2=0.973541，MAE=300.4588 kW，RMSE=426.2253 kW
+
+进程已结束，退出代码为 0
